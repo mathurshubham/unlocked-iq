@@ -147,7 +147,7 @@ app.get('/api/stats', (c) =>
   }),
 );
 
-const EVENT_NAMES = new Set(['test_start', 'test_finish', 'share_click', 'card_download', 'practice_answer']);
+const EVENT_NAMES = new Set(['test_start', 'test_finish', 'test_overtime', 'share_click', 'card_download', 'practice_answer']);
 // props with these keys fill blob2..blob7 in order; every other numeric prop fills doubles (sorted by key).
 const EVENT_BLOB_KEYS = ['mode', 'category', 'level', 'method', 'correct', 'source'];
 

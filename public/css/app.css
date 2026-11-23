@@ -749,3 +749,12 @@ details.rv[open] > summary::before { transform: rotate(45deg); }
   .res-burst { display: none; }
 }
 @media print { .t-actions, .res-share, .res-cta, .res-banner { display: none; } }
+
+/* Time's up screen + untimed state */
+.t-timeup { padding-block: var(--s7); }
+.t-timeup .lede { margin-block: var(--s3) var(--s5); }
+.t-timeup-card { padding: var(--s5); }
+.ring.untimed .ring-text { font-size: 0.6rem; letter-spacing: 0.02em; }
+.ring.untimed .ring-prog { stroke: var(--muted); }
+.res-untimed { margin: var(--s3) auto 0; max-width: 520px; font-size: 0.9rem; color: var(--muted); }
+.res-untimed .badge { margin-right: 6px; }

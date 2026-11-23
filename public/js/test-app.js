@@ -6,6 +6,7 @@ import { score } from './scoring.js';
 import { encodeShare } from './share.js';
 import {
   newState, newSeed, loadState, saveState, clearState, toPayload, remainingSecs,
+  pauseClock, resumeClock,
   QUICK_LENGTH, SEEN_KEY, readKey, writeKey,
 } from './state.js';
 import { postResult, postResponses, track } from './api.js';
@@ -48,8 +49,24 @@ function boot() {
   document.title = 'Take the free IQ test | Unlocked IQ';
   showSetup();
   document.addEventListener('keydown', onKey);
+  // The clock only runs while the test is on screen: switching apps, locking the phone
+  // or closing the tab pauses it, so time away never eats into the test.
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && view !== 'setup' && view !== 'warm') tick();
+    if (!S || S.done || view !== 'run') return;
+    if (document.hidden) {
+      pauseClock(S);
+      save();
+    } else {
+      resumeClock(S);
+      save();
+      tick();
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if (S && !S.done && view === 'run') {
+      pauseClock(S);
+      save();
+    }
   });
 }
 
@@ -99,8 +116,8 @@ function showSetup(notice = '') {
     } else if (kind === 'expired') {
       resumeHtml = `<div class="card t-resume fade-in" role="region" aria-label="Unfinished test">
         <div><p class="t-resume-t"><strong>Time ran out on your last test.</strong></p>
-        <p class="small muted">${answered} answers were saved. Want to see how you did?</p></div>
-        <div class="cluster"><button type="button" class="btn btn-primary" id="resume-btn">See my results</button>
+        <p class="small muted">${answered} answers were saved. See your results, or finish the rest untimed.</p></div>
+        <div class="cluster"><button type="button" class="btn btn-primary" id="resume-btn">Continue</button>
         <button type="button" class="btn btn-ghost" id="discard-btn">Discard</button></div></div>`;
     } else {
       const href = s.resultId ? `/r/${s.resultId}` : '/results';
@@ -296,7 +313,9 @@ function resumeTest(resume) {
   }
   warned.clear();
   finishing = false;
-  if (remainingSecs(S) <= 0) return finish(true);
+  resumeClock(S);
+  save();
+  if (!S.overtime && remainingSecs(S) <= 0) return timeUp();
   enterRun();
 }
 
@@ -330,6 +349,10 @@ function enterRun() {
 }
 
 function teardownRun() {
+  if (S && !S.done && view === 'run') {
+    pauseClock(S);
+    save();
+  }
   stopTimer();
   closePanel(true);
   document.documentElement.classList.remove('t-lock');
@@ -348,8 +371,19 @@ function stopTimer() {
 
 function tick() {
   if (!S || S.done || finishing) return;
-  const left = remainingSecs(S);
   const ring = $('.ring');
+  if (S.overtime) {
+    if (ring && lastShownSecs !== -2) {
+      lastShownSecs = -2;
+      $('.ring-text', ring).textContent = 'Untimed';
+      ring.setAttribute('aria-label', 'Untimed: the clock has run out');
+      ring.classList.remove('warn', 'crit');
+      ring.classList.add('untimed');
+      $('.ring-prog', ring).setAttribute('stroke-dashoffset', ringOffset(0, S.limit).toFixed(2));
+    }
+    return;
+  }
+  const left = remainingSecs(S);
   if (ring) {
     const secs = Math.max(0, Math.ceil(left));
     if (secs !== lastShownSecs) {
@@ -367,7 +401,54 @@ function tick() {
     }
     $('.ring-prog', ring).setAttribute('stroke-dashoffset', ringOffset(left, S.limit).toFixed(2));
   }
-  if (left <= 0) finish(true);
+  if (left <= 0) timeUp();
+}
+
+// Questions still open when the clock runs out.
+function questionsLeft() {
+  const locked = S.mode === 'quick' ? (cat ? cat.answers.length : answeredCount(S)) : answeredCount(S);
+  const n = S.mode === 'quick' ? QUICK_LENGTH : S.tids.length;
+  return { answered: locked, left: Math.max(0, n - locked), n };
+}
+
+// ---------------- time up ----------------
+// Never jump straight to results: say what happened and let the person choose.
+function timeUp() {
+  if (!S || S.done || finishing) return;
+  stopTimer();
+  closePanel(true);
+  const { answered, left, n } = questionsLeft();
+  if (left === 0) return finish(true);
+  S.current = Math.min(S.current, S.tids.length - 1);
+  save();
+  setView('timeup');
+  document.title = "Time's up | Unlocked IQ";
+  const mins = Math.round(S.limit / 60);
+  app.innerHTML = `
+    <section class="t-timeup container-text" aria-labelledby="tu-h">
+      <p class="eyebrow">${mins} minutes are up</p>
+      <h1 class="h2" id="tu-h" tabindex="-1">Time&rsquo;s up. Nice going!</h1>
+      <p class="lede">You answered <strong>${answered} of ${n}</strong> questions in time. ${left === 1 ? 'One question is' : `${left} questions are`} still open.</p>
+      <div class="card t-timeup-card stack">
+        <p>You can see your results now, or finish the last ${left === 1 ? 'question' : `${left}`} without the clock. If you finish them, your result will note that ${left === 1 ? 'it was' : 'they were'} answered after time ran out.</p>
+        <div class="cluster">
+          <button type="button" class="btn btn-primary btn-lg" id="tu-results">See my results</button>
+          <button type="button" class="btn btn-ghost btn-lg" id="tu-continue">Finish the last ${left === 1 ? 'question' : left} untimed</button>
+        </div>
+      </div>
+    </section>`;
+  $('#tu-results').addEventListener('click', () => finish(true));
+  $('#tu-continue').addEventListener('click', () => {
+    S.overtime = true;
+    S.timedAnswered = answered;
+    save();
+    track('test_overtime', { mode: S.mode, left });
+    enterRun();
+    const firstOpen = S.mode === 'standard' ? S.answers.findIndex((a) => a < 0) : -1;
+    if (firstOpen >= 0 && firstOpen !== S.current) go(firstOpen);
+  });
+  $('#tu-h').focus({ preventScroll: true });
+  announce(`Time's up. You answered ${answered} of ${n} questions.`, 'assertive');
 }
 
 let toastTimer = null;
@@ -718,15 +799,16 @@ async function finish(auto) {
   finishing = true;
   stopTimer();
   closePanel(true);
+  resumeClock(S);
   S.done = true;
-  S.endedAt = Math.min(Date.now(), S.startedAt + S.limit * 1000);
+  S.endedAt = Date.now();
   save();
   setView('finish');
   document.title = 'Scoring your answers | Unlocked IQ';
   app.innerHTML = `
     <section class="t-finish container-text" aria-live="polite">
       <div class="t-spinner" aria-hidden="true"></div>
-      <h1 class="h2" id="fin-h" tabindex="-1">${auto ? 'Time is up.' : 'Nice work.'} Scoring your answers&hellip;</h1>
+      <h1 class="h2" id="fin-h" tabindex="-1">Nice work. Scoring your answers&hellip;</h1>
       <p class="muted" id="fin-sub">This takes a moment.</p>
     </section>`;
   $('#fin-h').focus({ preventScroll: true });

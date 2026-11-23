@@ -71,6 +71,12 @@ export function newState({ mode, seed, name = '', consent = false, tids = [], no
     endedAt: null,
     resultId: null,
     cat: null,
+    // Clock only runs while the test is on screen: time spent away is added to pausedMs.
+    pausedMs: 0,
+    hiddenAt: null,
+    // Set when time ran out and the user chose to answer the rest untimed.
+    overtime: false,
+    timedAnswered: null,
   };
 }
 
@@ -103,6 +109,10 @@ export function normalizeState(s) {
       endedAt: typeof s.endedAt === 'number' ? s.endedAt : null,
       resultId: typeof s.resultId === 'string' && /^[A-Za-z0-9]{4,32}$/.test(s.resultId) ? s.resultId : null,
       cat: s.cat && typeof s.cat === 'object' ? s.cat : null,
+      pausedMs: Number.isFinite(s.pausedMs) && s.pausedMs >= 0 ? s.pausedMs : 0,
+      hiddenAt: Number.isFinite(s.hiddenAt) ? s.hiddenAt : null,
+      overtime: !!s.overtime,
+      timedAnswered: Number.isInteger(s.timedAnswered) && s.timedAnswered >= 0 ? s.timedAnswered : null,
     };
   } catch {
     return null;
@@ -126,9 +136,27 @@ export function clearState(storage) {
   removeKey(STATE_KEY, storage);
 }
 
-export const elapsedSecs = (state, now = Date.now()) =>
-  Math.max(0, ((state.endedAt ?? now) - state.startedAt) / 1000);
-export const remainingSecs = (state, now = Date.now()) => state.limit - (now - state.startedAt) / 1000;
+// Seconds the test was actually on screen (wall time minus paused time).
+export function activeSecs(state, now = Date.now()) {
+  const end = state.endedAt ?? now;
+  const paused = (state.pausedMs || 0) + (state.hiddenAt != null ? Math.max(0, end - state.hiddenAt) : 0);
+  return Math.max(0, (end - state.startedAt - paused) / 1000);
+}
+export const elapsedSecs = (state, now = Date.now()) => activeSecs(state, now);
+export const remainingSecs = (state, now = Date.now()) => state.limit - activeSecs(state, now);
+
+// Stop the clock (page hidden, app switched, test left). Idempotent.
+export function pauseClock(state, now = Date.now()) {
+  if (state && !state.done && state.hiddenAt == null) state.hiddenAt = now;
+}
+// Restart the clock, banking the time spent away. Idempotent.
+export function resumeClock(state, now = Date.now()) {
+  if (state && state.hiddenAt != null) {
+    state.pausedMs = (state.pausedMs || 0) + Math.max(0, now - state.hiddenAt);
+    state.hiddenAt = null;
+  }
+}
+export const answeredCount = (state) => state.answers.filter((a) => a >= 0).length;
 
 // Result payload (SPEC-v2) from a state. Time is capped at the limit.
 export function toPayload(state, now = Date.now()) {
@@ -141,6 +169,10 @@ export function toPayload(state, now = Date.now()) {
     secs: Math.round(Math.min(state.limit, elapsedSecs(state, now))),
   };
   if (state.name) p.n = state.name;
+  if (state.overtime && state.timedAnswered != null) {
+    const late = Math.max(0, answeredCount(state) - state.timedAnswered);
+    if (late > 0) p.u = late;
+  }
   return p;
 }
 

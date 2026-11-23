@@ -33,10 +33,11 @@ export function cleanName(name) {
 const clampSecs = (s) => Math.min(MAX_SECONDS, Math.max(0, Math.round(Number(s) || 0)));
 
 // payload { mode, seed, tids, a, secs, n? } -> token string
-export function encodeShare({ mode = 'standard', seed = 0, tids, a, secs = 0, n = '' }) {
+export function encodeShare({ mode = 'standard', seed = 0, tids, a, secs = 0, n = '', u = 0 }) {
   const obj = { v: 2, mode, seed: seed >>> 0, tids, a, secs: clampSecs(secs) };
   const name = cleanName(n);
   if (name) obj.n = name;
+  if (Number.isInteger(u) && u > 0) obj.u = u;
   return toBase64Url(JSON.stringify(obj));
 }
 
@@ -75,7 +76,13 @@ export function validatePayload(obj, { optionCount } = {}) {
       if (typeof obj.n !== 'string' || Array.from(obj.n).length > MAX_NAME) return null;
       n = obj.n.trim();
     }
-    return { v: 2, mode: obj.mode, seed: obj.seed, tids: obj.tids.slice(), a: obj.a.slice(), secs: Math.round(obj.secs), n };
+    const out = { v: 2, mode: obj.mode, seed: obj.seed, tids: obj.tids.slice(), a: obj.a.slice(), secs: Math.round(obj.secs), n };
+    // u: questions answered after the clock ran out (untimed finish).
+    if (obj.u !== undefined) {
+      if (!Number.isInteger(obj.u) || obj.u < 0 || obj.u > obj.tids.length) return null;
+      if (obj.u > 0) out.u = obj.u;
+    }
+    return out;
   } catch {
     return null;
   }

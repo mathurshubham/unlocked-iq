@@ -233,6 +233,7 @@ function render({ payload, id, mine, items, local }) {
         <div><dt>Time</dt><dd>${fmtDuration(secs)}</dd></div>
         <div><dt>Format</dt><dd class="res-mode">${quick ? 'Quick' : 'Standard'}</dd></div>
       </dl>
+      ${payload.u > 0 ? `<p class="res-untimed"><span class="badge">Untimed finish</span> ${payload.u === 1 ? 'The last question was' : `The last ${payload.u} questions were`} answered after the clock ran out; ${r.total - payload.u} were answered in time.</p>` : ''}
       <p class="small muted res-note">An estimate for fun, not a diagnosis.${quick ? ' Based on 15 adaptive questions, so the range is wider than the standard test.' : ''} Everything on this page is free: no email, no paywall.</p>
     </section>
 

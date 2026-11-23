@@ -94,6 +94,11 @@ export function validateResult(body) {
   const a = parseAnswers(body.a, items);
   const payload = { v: 2, mode: body.mode, seed, tids, a, secs: parseSecs(body.secs) };
   if (n) payload.n = n;
+  // u: questions answered after the clock ran out (untimed finish).
+  if (body.u !== undefined) {
+    if (!Number.isInteger(body.u) || body.u < 0 || body.u > tids.length) bad('u out of range');
+    if (body.u > 0) payload.u = body.u;
+  }
   return { payload, items, mode: body.mode };
 }
 
