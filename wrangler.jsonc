@@ -5,5 +5,8 @@
   "assets": {
     "directory": "./public",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "routes": [
+    { "pattern": "iq-test.shubhammathur.in", "custom_domain": true }
+  ]
 }
