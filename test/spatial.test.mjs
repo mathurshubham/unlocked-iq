@@ -14,7 +14,11 @@ import {
   foldNet,
   oppositeOf,
 } from '../public/js/cube.js';
-import { spatialItems, spatialData } from '../public/js/items-spatial.js';
+import {
+  spatialItems, spatialData, spatialVariant, SPATIAL_IDS, shapePool, netPools, pairSignature,
+} from '../public/js/items-spatial.js';
+import { freePolyominoes, hasBlock2x2, longestRun, netFamily, boundingBox } from '../public/js/cube.js';
+import { checkSvg } from './lib/markup.mjs';
 
 const { SHAPES, NETS } = spatialData;
 const byId = Object.fromEntries(spatialItems.map((i) => [i.id, i]));
@@ -329,4 +333,226 @@ test('S10: opposite pair (3-3 net)', () => {
   assert.equal(flags.indexOf(true), it.answer);
   assert.equal(new Set(pairs.map((p) => p.join())).size, 4);
   assert.ok(it.options.every((o) => o.includes('&amp;')));
+});
+
+
+// ==========================================================================
+// Variants: 200 seeds per template, verified from the rendered markup alone.
+// ==========================================================================
+
+const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
+const vOf = (id, seed) => spatialVariant(id, seed).item;
+
+test('variants: seed 0 is the v1 item (byte for byte)', () => {
+  for (const id of SPATIAL_IDS) assert.deepEqual(spatialVariant(id, 0).item, byId[id], id);
+});
+
+test('variant pools: shape pools, hexomino classification', () => {
+  for (const n of [5, 6, 7, 8]) {
+    const pool = shapePool(n);
+    assert.ok(pool.length >= (n === 5 ? 1 : 10), `pool ${n}`);
+    for (const sh of pool) {
+      assert.equal(sh.length, n);
+      assert.ok(isConnected(sh) && isAsymmetric(sh) && !hasBlock2x2(sh));
+      const { w, h } = boundingBox(sh);
+      assert.ok(Math.min(w, h) >= 3 && Math.max(w, h) <= 4);
+    }
+  }
+  // v1 shapes belong to their pools (up to orientation)
+  const canon = (c) => orientations(c).map(key).sort()[0];
+  for (const [id, n] of Object.entries({ S1: 7, S2: 5, S3: 6, S4: 6, S5: 8 })) {
+    assert.ok(shapePool(n).some((p) => canon(p) === canon(SHAPES[id])), id + ' in pool');
+  }
+  assert.deepEqual([5, 6, 7, 8].map((n) => freePolyominoes(n).length), [12, 35, 108, 369]);
+  const P = netPools();
+  assert.equal(P.valid.length, 11);
+  assert.deepEqual(Object.fromEntries(Object.entries(P.family).map(([k, v]) => [k, v.length])), { '1-4-1': 6, '2-3-1': 3, '2-2-2': 1, '3-3': 1 });
+  assert.equal(P.easyInvalid.length + P.hardInvalid.length, 24);
+  for (const c of P.easyInvalid) assert.ok(!foldNet(c).valid && (hasBlock2x2(c) || longestRun(c) >= 5));
+  for (const c of P.hardInvalid) assert.ok(!foldNet(c).valid && !hasBlock2x2(c) && longestRun(c) < 5);
+  assert.ok(P.hardInvalid.some((c) => canonOf(c) === canonOf(NETS.S7.invalid)), 'v1 S7 invalid is a hard invalid');
+});
+const canonOf = (c) => orientations(c).map(key).sort()[0];
+
+test('static pools equal the enumeration they were generated from (order included)', () => {
+  const profile = (sh) => {
+    const { w, h } = boundingBox(sh);
+    return isConnected(sh) && isAsymmetric(sh) && !hasBlock2x2(sh) && Math.min(w, h) >= 3 && Math.max(w, h) <= 4;
+  };
+  for (const n of [5, 6, 7, 8]) {
+    assert.deepEqual(shapePool(n).map(key), freePolyominoes(n).filter(profile).map(key), `pool ${n}`);
+  }
+  const P = netPools();
+  const hex = [...P.valid, ...P.easyInvalid, ...P.hardInvalid].map(key).sort();
+  assert.deepEqual(hex, freePolyominoes(6).map(key).slice().sort());
+  assert.deepEqual(P.valid.map(key), freePolyominoes(6).filter((c) => foldNet(c).valid).map(key));
+});
+
+function checkCommon(it, where) {
+  assert.equal(it.category, 'spatial');
+  assert.deepEqual(Object.keys(it).sort(), ['answer', 'b', 'category', 'id', 'optionCols', 'options', 'prompt', 'stem']);
+  assert.ok(Number.isInteger(it.answer) && it.answer >= 0 && it.answer < it.options.length);
+  assert.equal(new Set(it.options).size, it.options.length, where + ': options distinct');
+  assert.equal(new Set(it.options.map(viewBox)).size, 1, where + ': uniform viewBox');
+  for (const o of it.options) checkSvg(o, where);
+  if (it.stem) checkSvg(it.stem, where + ' stem');
+}
+
+const shapeIds = { S1: 7, S2: 5, S3: 6, S4: 6, S5: 8 };
+for (const id of ['S1', 'S2', 'S3', 'S4', 'S5']) {
+  test(`${id} variants: 200 seeds, exactly one option satisfies the question`, () => {
+    const bases = new Set();
+    for (const seed of SEEDS) {
+      const it = vOf(id, seed);
+      const where = `${id}#${seed}`;
+      checkCommon(it, where);
+      const opts = it.options.map(gridCells);
+      assert.equal(new Set(opts.map(key)).size, opts.length, where + ': shapes distinct');
+      for (const o of opts) {
+        assert.equal(o.length, shapeIds[id], where + ': cell count');
+        assert.ok(isConnected(o));
+        assert.ok(isAsymmetric(o), where + ': asymmetric');
+      }
+      assert.equal(new Set(it.options.map(cellSize)).size, 1, where + ': one cell size');
+      if (id === 'S4') {
+        assert.equal(it.stem, '');
+        const others = opts.filter((_, i) => i !== it.answer);
+        for (const a of others) for (const b of others) assert.ok(sameByRotation(a, b), where);
+        assert.ok(!sameByRotation(others[0], opts[it.answer]));
+        assert.ok(sameByRotation(mirror(others[0]), opts[it.answer]));
+        bases.add(canonOf(opts[it.answer]));
+        continue;
+      }
+      const stem = gridCells(it.stem);
+      assert.equal(stem.length, shapeIds[id]);
+      assert.ok(isConnected(stem) && isAsymmetric(stem));
+      assert.equal(cellSize(it.stem), cellSize(it.options[0]));
+      bases.add(canonOf(stem));
+      if (id === 'S1') {
+        const hits = opts.map((o, i) => (key(o) === key(mirror(stem)) ? i : -1)).filter((i) => i >= 0);
+        assert.deepEqual(hits, [it.answer], where);
+        const rest = opts.filter((_, i) => i !== it.answer).map(key).sort();
+        assert.deepEqual(rest, [stem, rotate(stem, 1), rotate(stem, 2), flipY(stem)].map(key).sort(), where);
+      } else {
+        const k = { S2: 1, S3: 3, S5: 2 }[id];
+        const rotated = opts.map((o, i) => (sameByRotation(stem, o) ? i : -1)).filter((i) => i >= 0);
+        assert.deepEqual(rotated, [it.answer], where + ': exactly one pure rotation');
+        assert.equal(key(opts[it.answer]), key(rotate(stem, k)), where + ': rotation angle');
+        for (let i = 0; i < opts.length; i++) if (i !== it.answer) assert.ok(sameByRotation(mirror(stem), opts[i]), where);
+      }
+    }
+    if (id !== 'S2') assert.ok(bases.size >= 4, `${id}: only ${bases.size} distinct shapes over 200 seeds`);
+  });
+}
+
+test('S6 variants: exactly one option folds, all six-cell nets, distinct', () => {
+  const fams = new Set();
+  for (const seed of SEEDS) {
+    const it = vOf('S6', seed);
+    const where = `S6#${seed}`;
+    checkCommon(it, where);
+    const opts = it.options.map(gridCells);
+    assert.equal(opts.length, 4);
+    assert.equal(new Set(opts.map((o) => canonOf(o))).size, 4, where + ': distinct free shapes');
+    for (const o of opts) assert.ok(o.length === 6 && isConnected(o));
+    const valid = opts.map((o, i) => (foldNet(o).valid ? i : -1)).filter((i) => i >= 0);
+    assert.deepEqual(valid, [it.answer], where);
+    // distractors are the obvious kind: a 2x2 block or a run of five
+    opts.forEach((o, i) => { if (i !== it.answer) assert.ok(hasBlock2x2(o) || longestRun(o) >= 5, where); });
+    assert.equal(new Set(it.options.map(cellSize)).size, 1);
+    fams.add(canonOf(opts[it.answer]));
+  }
+  assert.ok(fams.size >= 8, `only ${fams.size} different valid nets`);
+});
+
+test('S7 variants: exactly one option does not fold; the other four are valid nets of different families', () => {
+  const inv = new Set();
+  for (const seed of SEEDS) {
+    const it = vOf('S7', seed);
+    const where = `S7#${seed}`;
+    checkCommon(it, where);
+    const opts = it.options.map(gridCells);
+    assert.equal(opts.length, 5);
+    assert.equal(new Set(opts.map((o) => canonOf(o))).size, 5, where);
+    for (const o of opts) assert.ok(o.length === 6 && isConnected(o));
+    const bad = opts.map((o, i) => (!foldNet(o).valid ? i : -1)).filter((i) => i >= 0);
+    assert.deepEqual(bad, [it.answer], where);
+    const fams = opts.filter((_, i) => i !== it.answer).map(netFamily);
+    assert.deepEqual(fams.slice().sort(), ['1-4-1', '2-2-2', '2-3-1', '3-3'], where);
+    assert.ok(!hasBlock2x2(opts[it.answer]) && longestRun(opts[it.answer]) < 5, where + ': subtle invalid net');
+    inv.add(canonOf(opts[it.answer]));
+  }
+  assert.ok(inv.size >= 6);
+});
+
+const letterIds = { S8: 'staircase', S9: 'three-in-middle' };
+for (const id of ['S8', 'S9']) {
+  test(`${id} variants: the answer is the folded opposite of the asked letter`, () => {
+    const asked = new Set();
+    const orients = new Set();
+    for (const seed of SEEDS) {
+      const it = vOf(id, seed);
+      const where = `${id}#${seed}`;
+      checkCommon(it, where);
+      const letters = stemLetters(it.stem);
+      assert.deepEqual([...letters].sort(), ['A', 'B', 'C', 'D', 'E', 'F']);
+      const cells = gridCells(it.stem);
+      assert.equal(cells.length, 6);
+      assert.ok(isConnected(cells) && foldNet(cells).valid, where);
+      assert.equal(netFamily(cells), id === 'S8' ? '2-2-2' : '2-3-1', where);
+      const ask = it.prompt.match(/opposite ([A-F])\?$/)[1];
+      const askIdx = letters.indexOf(ask);
+      const opp = oppositeOf(cells, askIdx);
+      const opts = it.options.map(optionText);
+      assert.equal(opts.length, 5);
+      assert.ok(!opts.includes(ask));
+      assert.equal(opts[it.answer], letters[opp], where);
+      assert.equal(new Set(opts).size, 5);
+      // the answer is the only option that never touches the asked face
+      for (let i = 0; i < opts.length; i++) {
+        if (i !== it.answer) assert.notEqual(letters.indexOf(opts[i]), opp);
+      }
+      if (id === 'S9') assert.ok(cells[askIdx][0] !== cells[opp][0] && cells[askIdx][1] !== cells[opp][1], where + ': off-line');
+      if (id === 'S8') assert.equal(pairSignature(cells, askIdx), pairSignature(NETS.S8, 0), where + ': same geometry class as v1');
+      asked.add(ask);
+      orients.add(key(cells));
+    }
+    assert.ok(asked.size >= 5, 'asked letter varies');
+    assert.ok(orients.size >= 3, 'net orientation varies');
+  });
+}
+
+test('S10 variants: exactly one option is an opposite pair', () => {
+  const answers = new Set();
+  for (const seed of SEEDS) {
+    const it = vOf('S10', seed);
+    const where = `S10#${seed}`;
+    checkCommon(it, where);
+    const letters = stemLetters(it.stem);
+    const cells = gridCells(it.stem);
+    assert.ok(isConnected(cells) && foldNet(cells).valid);
+    assert.equal(netFamily(cells), '3-3');
+    const pairs = it.options.map((o) => optionText(o).replace('&amp;', '&').split(' & '));
+    assert.equal(pairs.length, 4);
+    for (const p of pairs) assert.ok(p.length === 2 && p[0] < p[1]);
+    const isOpp = (p) => oppositeOf(cells, letters.indexOf(p[0])) === letters.indexOf(p[1]);
+    const flags = pairs.map(isOpp);
+    assert.equal(flags.filter(Boolean).length, 1, where);
+    assert.equal(flags.indexOf(true), it.answer, where);
+    assert.equal(new Set(pairs.map((p) => p.join())).size, 4);
+    answers.add(pairs[it.answer].join());
+  }
+  assert.ok(answers.size >= 5);
+});
+
+test('variants are deterministic and different seeds give different items', () => {
+  for (const id of SPATIAL_IDS) {
+    const seen = new Set();
+    for (const seed of SEEDS.slice(0, 60)) {
+      const a = vOf(id, seed);
+      assert.deepEqual(vOf(id, seed), a);
+      seen.add(JSON.stringify(a));
+    }
+    assert.ok(seen.size >= (id === 'S2' ? 6 : 10), `${id}: ${seen.size} distinct of 60`);
+  }
 });

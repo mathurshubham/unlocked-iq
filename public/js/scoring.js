@@ -11,6 +11,18 @@ export function p3pl(theta, b, nOptions, a = DISCRIMINATION) {
   return c + (1 - c) / (1 + Math.exp(-a * (theta - b)));
 }
 
+// Fisher information of a 3PL item at ability theta.
+export function fisherInfo(theta, b, nOptions, a = DISCRIMINATION) {
+  const c = 1 / nOptions;
+  const p = p3pl(theta, b, nOptions, a);
+  const q = 1 - p;
+  const pStar = (p - c) / (1 - c);
+  return (a * a * q * pStar * pStar) / p;
+}
+
+// Per-item discrimination: the item's own `a` if present, else the default.
+export const itemA = (it) => (typeof it.a === 'number' && it.a > 0 ? it.a : DISCRIMINATION);
+
 // Standard normal CDF (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7).
 export function normCdf(x) {
   const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2);
@@ -38,7 +50,7 @@ export function score(items, answers) {
     thetas[g] = th;
     let lw = (-th * th) / 2; // N(0,1) prior, constant dropped
     for (let i = 0; i < n; i++) {
-      const p = p3pl(th, items[i].b, items[i].options.length);
+      const p = p3pl(th, items[i].b, items[i].options.length, itemA(items[i]));
       lw += Math.log(correctFlags[i] ? p : 1 - p);
     }
     logw[g] = lw;
@@ -76,7 +88,7 @@ export function score(items, answers) {
     .filter(({ i }) => correctFlags[i])
     .sort((x, y) => y.it.b - x.it.b)
     .slice(0, 3)
-    .map(({ it, i }) => ({ id: it.id, index: i + 1, pAvg: p3pl(0, it.b, it.options.length) }));
+    .map(({ it, i }) => ({ id: it.id, index: i + 1, pAvg: p3pl(0, it.b, it.options.length, itemA(it)) }));
 
   return {
     theta,

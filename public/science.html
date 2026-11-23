@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>The science behind Unlocked IQ – How the test works</title>
+<meta name="description" content="How Unlocked IQ builds its puzzles, scores them with item response theory, adapts to you, and why the result is an estimate with a range.">
+<link rel="canonical" href="https://iq-test.shubhammathur.in/science">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Unlocked IQ">
+<meta property="og:title" content="The science behind Unlocked IQ – How the test works">
+<meta property="og:description" content="How Unlocked IQ builds its puzzles, scores them with item response theory, adapts to you, and why the result is an estimate with a range.">
+<meta property="og:url" content="https://iq-test.shubhammathur.in/science">
+<meta property="og:image" content="https://iq-test.shubhammathur.in/og-default.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The science behind Unlocked IQ – How the test works">
+<meta name="twitter:description" content="How Unlocked IQ builds its puzzles, scores them with item response theory, adapts to you, and why the result is an estimate with a range.">
+<meta name="twitter:image" content="https://iq-test.shubhammathur.in/og-default.png">
+<meta name="theme-color" content="#FBFAF7">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/pages.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"The science behind Unlocked IQ","description":"How the puzzles are built, how scoring works, and the limits of an online IQ estimate.","mainEntityOfPage":"https://iq-test.shubhammathur.in/science","author":{"@type":"Organization","name":"Unlocked IQ"},"publisher":{"@type":"Organization","name":"Unlocked IQ"}}</script>
+<script type="module" src="/js/site.js"></script>
+</head>
+<body>
+<div id="site-header"></div>
+
+<main id="main">
+  <section class="page-hero">
+    <div class="container">
+      <p class="eyebrow">How it works</p>
+      <h1 class="h1">The science, without the hand-waving.</h1>
+      <p class="lede">How the puzzles are made, how your answers become a score, and an honest account of what that score can and cannot tell you.</p>
+    </div>
+  </section>
+
+  <div class="container doc-layout">
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+      <ol>
+        <li><a href="#puzzles">How the puzzles are built</a></li>
+        <li><a href="#scoring">How scoring works</a></li>
+        <li><a href="#range">Why you get a range</a></li>
+        <li><a href="#adaptive">Adaptive testing</a></li>
+        <li><a href="#variants">Retakes and variants</a></li>
+        <li><a href="#calibration">Calibration</a></li>
+        <li><a href="#limits">Limitations</a></li>
+        <li><a href="#sources">Sources</a></li>
+      </ol>
+    </nav>
+    <div class="prose">
+      <h2 id="puzzles">How the puzzles are built</h2>
+      <p>Unlocked IQ measures fluid reasoning: solving new problems without relying on school knowledge. It uses three kinds of puzzle, each built from explicit, checkable rules rather than hand-drawn guesses.</p>
+      <h3>Pattern reasoning (matrices)</h3>
+      <p>A 3&times;3 grid where the bottom-right piece is missing. Each puzzle combines one or more rules (shape cycles, shading progressions, counts that add up, line segments that combine by union, difference or overlap) applied across rows and columns. This is the construction approach behind the Open Matrices Item Bank and the Sandia Matrices: a small vocabulary of rules, combined at different difficulty levels. Our wrong options are designed to break exactly one feature of the right answer, and a test suite checks that every puzzle has one correct option and that no distractor also satisfies the rule.</p>
+      <h3>Spatial reasoning</h3>
+      <p>Mental rotation, mirror images and cube nets. You decide which shape is a rotation (not a reflection) of another, or which flat net folds into a cube, or which faces end up opposite each other. Cube-net answers are computed by simulating the fold, never typed in by hand.</p>
+      <h3>Number and letter series</h3>
+      <p>Arithmetic and geometric steps, alternating rules, and recursive patterns such as doubling and adding one. Every answer is recomputed from its rule in code and checked against the options.</p>
+
+      <h2 id="scoring">How scoring works</h2>
+      <p>Counting correct answers is a poor measure when questions differ in difficulty. Instead, scoring uses <strong>item response theory</strong> (IRT), the same family of methods used by large standardised tests. In the three-parameter logistic (3PL) model, the chance of answering a question correctly depends on your ability &theta;, the question&rsquo;s difficulty <em>b</em>, how sharply it separates strong from weak solvers (<em>a</em>), and a guessing floor <em>c</em>:</p>
+      <p class="formula">P(correct) = c + (1 &minus; c) / (1 + exp(&minus;a &middot; (&theta; &minus; b)))<br>c = 1 / number of options</p>
+      <p>Your ability is then estimated with <strong>expected a posteriori (EAP)</strong> estimation: take a grid of possible &theta; values from &minus;4 to 4, weight each by how well it explains your answers and by a standard-normal prior, and take the average. That average is your &theta;; the spread of the weights is your uncertainty (the standard error). Unanswered questions count as wrong, so guessing is always better than skipping.</p>
+      <p>&theta; is then placed on the familiar IQ scale (mean 100, standard deviation 15):</p>
+      <p class="formula">IQ = round(100 + 15 &middot; &theta;), limited to 55&ndash;145<br>Percentile = &Phi;(&theta;) &times; 100</p>
+      <p>The 55&ndash;145 limits reflect what a 30-question test can credibly distinguish. Beyond them there is not enough information to say anything useful.</p>
+
+      <h2 id="range">Why you get a range, not a single number</h2>
+      <p>Any test score has measurement error. A different day, different questions or a bit of bad luck on a guess will move your result. We show it as a 90% range:</p>
+      <p class="formula">range = IQ &plusmn; round(1.645 &times; 15 &times; standard error)</p>
+      <p>Read it as &ldquo;given these answers, a score in this range is quite plausible.&rdquo; A narrow range means your answers pointed clearly at one level; a wide range means they were mixed. Two people with the same IQ number can have different ranges, and that is information worth having.</p>
+
+      <h2 id="adaptive">Adaptive testing (Quick test)</h2>
+      <p>The Quick test is a computerised adaptive test. It starts with an average-difficulty question and updates its estimate after every answer. The next question is the unused one that would tell it the most about you at your current estimate (maximum Fisher information), while keeping the mix of question types balanced. Because it skips questions that are far too easy or too hard for you, 15 questions can carry about as much information as many more fixed ones. The trade-off: answers are final, there is no going back, and the estimate usually has a slightly wider range than the full 30-question test.</p>
+
+      <h2 id="variants">Retakes and variants</h2>
+      <p>Every puzzle is a template that can produce many isomorphic variants: the same rule structure and difficulty, with a different surface (other shapes, shading permutations, rotations, different polyominoes, different number series). A retake builds new variants, so remembering last time&rsquo;s answers does not help. It does not remove practice effects: you do get better at this kind of puzzle with experience, which is a real effect in all reasoning tests.</p>
+
+      <h2 id="calibration">Calibration</h2>
+      <p>Question difficulties start as careful designer estimates. They improve with data: if you tick the optional box &ldquo;share my anonymous answers&rdquo;, each answer is recorded without your name or any identifier and later used to re-estimate how hard each template really is. Estimates are only updated once a template has at least 50 responses. This is calibration of difficulty, not norming: it makes scores more consistent between questions, but it does not turn the scale into a population-normed one.</p>
+
+      <h2 id="limits">Limitations</h2>
+      <div class="callout"><strong>An estimate, not a diagnosis.</strong><span>This test is not a clinical or standardised assessment and should not be used for school, employment or medical decisions.</span></div>
+      <ul>
+        <li><strong>Not population-normed.</strong> The mean of 100 comes from the scale definition, not from testing a representative sample of people.</li>
+        <li><strong>One short sitting.</strong> Fatigue, distraction, screen size and a noisy room all move scores.</li>
+        <li><strong>Narrow coverage.</strong> The test targets fluid reasoning. IQ in the clinical sense, and human intelligence in general, cover much more: vocabulary, memory, processing speed, creativity and more.</li>
+        <li><strong>Visual format.</strong> Most puzzles are visual and may disadvantage people with some visual differences. See the <a href="/faq">FAQ</a> on accessibility.</li>
+        <li><strong>Practice effects.</strong> Repeating the test, or practising here, raises scores a little. Treat retakes accordingly.</li>
+      </ul>
+
+      <h2 id="sources">Sources and further reading</h2>
+      <ul class="sources">
+        <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9326670/" rel="noopener">Open Matrices Item Bank (OMIB)</a><span>A free bank of matrix reasoning items built from combinable rules, with published difficulty data.</span></li>
+        <li><a href="https://github.com/sandialabs/Matrices" rel="noopener">Sandia Matrices</a><span>An open matrix-reasoning item generator from Sandia National Laboratories, showing rule-based construction of items.</span></li>
+        <li><a href="https://personality-project.org/revelle/publications/condon.icar.14.pdf" rel="noopener">The International Cognitive Ability Resource (ICAR)</a><span>Condon and Revelle on building public-domain ability measures, including matrix, rotation and series items.</span></li>
+        <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6837216/" rel="noopener">MaRs-IB, the Matrix Reasoning Item Bank</a><span>Chierchia et al. on a freely available matrix reasoning bank with difficulty estimates across ages.</span></li>
+      </ul>
+      <p class="small muted">Unlocked IQ is not affiliated with these projects. They are cited as the research that informed our construction methods; the puzzles here are original.</p>
+
+      <div class="cta-inline"><p><strong>Now try it yourself.</strong></p><div class="cluster"><a class="btn btn-primary" href="/test">Take the free test</a><a class="btn" href="/practice">Practice first</a></div></div>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+</body>
+</html>

@@ -145,3 +145,86 @@ export function oppositeOf(cells, i) {
   if (!valid) return -1;
   return faceOf.indexOf(OPP[faceOf[i]]);
 }
+
+// ---- enumeration and net classification (used by variant generation) ----
+
+// Canonical representative of a free polyomino: the orientation with the smallest key.
+export function canonical(cells) {
+  const o = orientations(cells);
+  const keys = o.map(key);
+  const best = keys.indexOf(keys.slice().sort()[0]);
+  return o[best];
+}
+
+const freeCache = new Map();
+
+// All free polyominoes with n cells (n >= 1), one canonical orientation each,
+// sorted by key so the order is stable. 1, 2, 5, 12, 35, 108, 369 for n = 2, 3, ...
+// NOTE: pools drawn from this list are indexed by seed; do not change the
+// enumeration or ordering once share links exist.
+export function freePolyominoes(n) {
+  if (freeCache.has(n)) return freeCache.get(n);
+  let level = new Map([['0,0', [[0, 0]]]]);
+  for (let m = 2; m <= n; m++) {
+    const next = new Map();
+    for (const cells of level.values()) {
+      const have = new Set(cells.map(([x, y]) => x + ',' + y));
+      for (const [x, y] of cells) {
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (have.has(x + dx + ',' + (y + dy))) continue;
+          const c = canonical(normalize([...cells, [x + dx, y + dy]]));
+          next.set(key(c), c);
+        }
+      }
+    }
+    level = next;
+  }
+  const out = [...level.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map((e) => e[1]);
+  freeCache.set(n, out);
+  return out;
+}
+
+// True if the shape contains a 2x2 block of cells.
+export function hasBlock2x2(cells) {
+  const set = new Set(cells.map(([x, y]) => x + ',' + y));
+  return cells.some(([x, y]) => set.has(x + 1 + ',' + y) && set.has(x + ',' + (y + 1)) && set.has(x + 1 + ',' + (y + 1)));
+}
+
+// Longest straight run of cells in a row or column.
+export function longestRun(cells) {
+  const set = new Set(cells.map(([x, y]) => x + ',' + y));
+  let best = 0;
+  for (const [x, y] of cells) {
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      if (set.has(x - dx + ',' + (y - dy))) continue; // not the start of a run
+      let len = 0;
+      while (set.has(x + dx * len + ',' + (y + dy * len))) len++;
+      best = Math.max(best, len);
+    }
+  }
+  return best;
+}
+
+// Family of a valid net by its row (or column) profile: '1-4-1', '2-3-1', '2-2-2', '3-3'.
+// Returns null for anything else.
+export function netFamily(cells) {
+  const n = normalize(cells);
+  const profile = (axis) => {
+    const counts = new Map();
+    for (const c of n) counts.set(c[axis], (counts.get(c[axis]) || 0) + 1);
+    return [...counts.entries()].sort((a, b) => a[0] - b[0]).map((e) => e[1]);
+  };
+  for (const p of [profile(1), profile(0)]) {
+    const s = p.join('-');
+    if (s === '1-4-1') return '1-4-1';
+    if (s === '2-3-1' || s === '1-3-2') return '2-3-1';
+    if (s === '2-2-2') return '2-2-2';
+    if (s === '3-3') return '3-3';
+  }
+  return null;
+}
+
+// Apply orientation index 0..7 (rotation 0..3, then mirrored rotations) to a shape.
+export function orient(cells, index) {
+  return orientations(cells)[((index % 8) + 8) % 8];
+}

@@ -170,7 +170,7 @@ export function strengths(items, answers, seconds, labels) {
 
   // 4. Pace
   if (mins < 12 && accuracy >= 0.6) {
-    out.push({ title: 'Quick and accurate', text: `You finished in about ${Math.max(1, Math.round(mins))} minutes and still got most answers right. Speed with accuracy is a rare pairing.` });
+    out.push({ title: 'Quick and accurate', text: `You finished in about ${Math.max(1, Math.round(mins))} minute${Math.max(1, Math.round(mins)) === 1 ? '' : 's'} and still got most answers right. Speed with accuracy is a rare pairing.` });
   } else if (mins < 12) {
     out.push({ title: 'Decisive', text: 'You moved through the test quickly and trusted your instincts. Decisiveness is an underrated strength.' });
   } else if (mins > 20) {

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /og/
+Disallow: /results
+Disallow: /r/
+
+Sitemap: https://iq-test.shubhammathur.in/sitemap.xml

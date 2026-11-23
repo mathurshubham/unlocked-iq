@@ -4,97 +4,328 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<meta name="description" content="A free 30-question reasoning test with full results. No email, no paywall.">
-<title>Free IQ Test</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233b5bdb'/%3E%3Ctext x='32' y='34' font-family='system-ui,sans-serif' font-size='40' font-weight='700' fill='white' text-anchor='middle' dominant-baseline='central'%3E%3F%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="styles.css">
-<script type="module" src="js/app.js"></script>
+<title>Unlocked IQ – The free IQ test with nothing locked</title>
+<meta name="description" content="A free reasoning test with complete results and an explanation for every question. No email, no paywall, no drip emails. 25 minutes, or 10 for the quick version.">
+<link rel="canonical" href="https://iq-test.shubhammathur.in/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Unlocked IQ">
+<meta property="og:title" content="Unlocked IQ – The IQ test with nothing locked">
+<meta property="og:description" content="Free, complete results with an explanation for every question. No email, no paywall.">
+<meta property="og:url" content="https://iq-test.shubhammathur.in/">
+<meta property="og:image" content="https://iq-test.shubhammathur.in/og-default.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Unlocked IQ – The IQ test with nothing locked">
+<meta name="twitter:description" content="Free, complete results with an explanation for every question. No email, no paywall.">
+<meta name="twitter:image" content="https://iq-test.shubhammathur.in/og-default.png">
+<meta name="theme-color" content="#FBFAF7">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/pages.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Unlocked IQ","alternateName":"Unlocked IQ – The IQ test with nothing locked","url":"https://iq-test.shubhammathur.in/","description":"A free reasoning test with complete results and an explanation for every question. No email, no paywall.","inLanguage":"en"}</script>
+<script type="module" src="/js/site.js"></script>
+<script type="module" src="/js/landing.js"></script>
 </head>
-<body>
-<main class="wrap" id="main">
+<body class="page-landing">
+<div id="site-header"></div>
 
-  <!-- INTRO -->
-  <section id="intro" class="screen" aria-labelledby="intro-title">
-    <p class="eyebrow">Free, start to finish</p>
-    <h1 id="intro-title" tabindex="-1">Free IQ Test</h1>
-    <p class="lede">30 puzzles, 25 minutes, full results free. No email, no paywall.</p>
+<main id="main">
 
-    <div id="notice" class="notice" role="status" hidden></div>
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="container hero-grid">
+      <div class="hero-copy stack" style="--gap: 24px">
+        <p class="hero-pill"><span class="hero-pill-dot" aria-hidden="true"></span>Free &middot; No email &middot; No paywall</p>
+        <h1 class="h1" id="hero-title">The IQ test with <span class="mark">nothing locked.</span></h1>
+        <p class="lede">30 original reasoning puzzles and a complete, honest result: your estimated IQ with its range, percentile, strengths and an explanation for every answer. No email wall, no blurred score, no drip emails.</p>
+        <div class="cluster" style="--gap: 12px">
+          <a class="btn btn-primary btn-lg" href="/test">Take the free test</a>
+          <a class="btn btn-lg" href="/practice">Try a practice puzzle</a>
+        </div>
+        <ul class="hero-facts" role="list">
+          <li><strong>25 min</strong> standard, 30 questions</li>
+          <li><strong>10 min</strong> quick, adaptive</li>
+          <li><strong>$0</strong> start to finish</li>
+        </ul>
+        <p class="small muted hero-takers" id="takers" hidden></p>
+      </div>
 
-    <div id="resume-box" class="card resume" hidden>
-      <p id="resume-text"></p>
-      <div class="row">
-        <button type="button" class="btn primary" id="resume-btn">Resume</button>
-        <button type="button" class="btn" id="results-btn" hidden>See my results</button>
+      <div class="hero-demo">
+        <div class="puzzle card" id="sample" aria-labelledby="sample-title">
+          <div class="puzzle-head">
+            <h2 class="puzzle-title" id="sample-title">Try one now</h2>
+            <span class="badge">Pattern reasoning</span>
+          </div>
+          <p class="puzzle-prompt" id="sample-prompt">Which option completes the pattern?</p>
+          <div class="puzzle-stem" id="sample-stem" aria-live="off">
+            <div class="puzzle-loading muted small">Loading puzzle&hellip;</div>
+          </div>
+          <div class="puzzle-options" id="sample-options" role="group" aria-label="Answer options"></div>
+          <div class="puzzle-feedback" id="sample-feedback" role="status" aria-live="polite" hidden></div>
+        </div>
+        <noscript><p class="small muted" style="margin-top: 12px">The sample puzzle needs JavaScript. The test itself does too.</p></noscript>
       </div>
     </div>
-
-    <form id="start-form" class="card" autocomplete="off">
-      <label for="name" class="label">Your name <span class="muted">(optional, shown on your results)</span></label>
-      <input id="name" name="name" type="text" maxlength="40" placeholder="e.g. Priya" autocomplete="given-name">
-      <button type="submit" class="btn primary big" id="start-btn">Start the test</button>
-      <p class="small muted">The 25-minute timer starts when you press the button. Your progress is saved in this browser, so a reload will not reset it.</p>
-    </form>
-
-    <h2 class="h2">What to expect</h2>
-    <ul class="expect">
-      <li><strong>Pattern reasoning</strong><span>12 grids with one missing piece. Work out the rules and pick what fits.</span></li>
-      <li><strong>Spatial reasoning</strong><span>10 puzzles on rotating shapes and folding flat nets into cubes.</span></li>
-      <li><strong>Numerical &amp; sequence reasoning</strong><span>8 number and letter series. Find the rule, give the next term.</span></li>
-    </ul>
-    <p class="small muted">Questions get harder as you go. Unanswered questions count as wrong, so it is worth making a guess. Keys 1&ndash;6 pick an option, the left and right arrows move between questions.</p>
   </section>
 
-  <!-- TEST -->
-  <section id="test" class="screen" hidden aria-label="Test">
-    <div class="topbar">
-      <div class="topbar-left">
-        <span id="q-count" class="q-count">Question 1 of 30</span>
-        <span id="q-cat" class="muted small"></span>
+  <!-- HOW IT WORKS -->
+  <section class="section" id="how" aria-labelledby="how-title">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">How it works</p>
+        <h2 class="h2" id="how-title">Three steps, about twenty minutes.</h2>
+        <p class="lede">No account, no setup. Press start and think.</p>
+      </header>
+      <ol class="steps" role="list">
+        <li class="step">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3 class="h3">Pick your length</h3>
+          <p class="muted">The <strong>Standard</strong> test is 30 questions in 25 minutes, with review and flagging. The <strong>Quick</strong> test adapts to you: 15 questions, about 10 minutes.</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3 class="h3">Solve the puzzles</h3>
+          <p class="muted">Patterns, shapes and number series, easiest first. Try a worked example for each type before you begin, then skip, flag and come back as you like.</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3 class="h3">Get everything. Free.</h3>
+          <p class="muted">Your estimate with a 90% range, percentile, strengths, and a plain-language reason behind every question. Share it with a link, or keep it private.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="section section--alt" aria-labelledby="cat-title">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">What it measures</p>
+        <h2 class="h2" id="cat-title">Three ways of reasoning.</h2>
+        <p class="lede">Every puzzle is original, built from published construction rules rather than copied from anywhere.</p>
+      </header>
+      <div class="cat-grid">
+
+        <article class="card cat-card">
+          <div class="cat-fig" aria-hidden="true">
+            <svg viewBox="0 0 120 120" width="100%" height="100%" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+              <g fill="none" stroke-opacity="0.28" stroke-width="1.5">
+                <rect x="1" y="1" width="36" height="36" rx="5"/><rect x="42" y="1" width="36" height="36" rx="5"/><rect x="83" y="1" width="36" height="36" rx="5"/>
+                <rect x="1" y="42" width="36" height="36" rx="5"/><rect x="42" y="42" width="36" height="36" rx="5"/><rect x="83" y="42" width="36" height="36" rx="5"/>
+                <rect x="1" y="83" width="36" height="36" rx="5"/><rect x="42" y="83" width="36" height="36" rx="5"/>
+              </g>
+              <circle class="f-none" cx="19" cy="19" r="10"/>
+              <path class="f-grey" d="M60 8.5 70.5 29h-21z"/>
+              <rect class="f-solid" x="92" y="10" width="18" height="18" rx="2"/>
+              <path class="f-none" d="M19 49.5 29.5 70h-21z"/>
+              <rect class="f-grey" x="51" y="51" width="18" height="18" rx="2"/>
+              <circle class="f-solid" cx="101" cy="60" r="10"/>
+              <rect class="f-none" x="10" y="92" width="18" height="18" rx="2"/>
+              <circle class="f-grey" cx="60" cy="101" r="10"/>
+              <rect x="83" y="83" width="36" height="36" rx="5" fill="none" stroke="var(--highlight)" stroke-dasharray="5 5" stroke-width="2.4"/>
+              <text x="101" y="102" text-anchor="middle" dominant-baseline="central" font-family="var(--font-display)" font-size="24" font-weight="700" fill="var(--highlight-text)" stroke="none">?</text>
+            </svg>
+          </div>
+          <h3 class="h3">Pattern reasoning</h3>
+          <p class="muted">Grids with one missing piece. Spot how shapes, shading, counts and lines change across rows and columns.</p>
+          <p class="cat-meta"><span class="badge">12 questions</span></p>
+        </article>
+
+        <article class="card cat-card">
+          <div class="cat-fig" aria-hidden="true">
+            <svg viewBox="0 0 220 120" width="100%" height="100%" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+              <g class="f-grey" transform="translate(18 24)">
+                <rect class="f-grey" x="18" y="0" width="18" height="18"/><rect class="f-grey" x="36" y="0" width="18" height="18"/>
+                <rect class="f-grey" x="0" y="18" width="18" height="18"/><rect class="f-grey" x="18" y="18" width="18" height="18"/>
+                <rect class="f-grey" x="18" y="36" width="18" height="18"/>
+              </g>
+              <path d="M88 60h28m-8-9 9 9-9 9" fill="none" stroke="var(--highlight)" stroke-width="3"/>
+              <text x="102" y="42" text-anchor="middle" font-family="var(--font-body)" font-size="11" font-weight="600" fill="var(--muted)" stroke="none">rotate</text>
+              <g transform="translate(128 24) rotate(90 27 27)">
+                <rect class="f-solid" x="18" y="0" width="18" height="18" style="fill: var(--accent); stroke: var(--accent)"/><rect style="fill: var(--accent); stroke: var(--accent)" x="36" y="0" width="18" height="18"/>
+                <rect style="fill: var(--accent); stroke: var(--accent)" x="0" y="18" width="18" height="18"/><rect style="fill: var(--accent); stroke: var(--accent)" x="18" y="18" width="18" height="18"/>
+                <rect style="fill: var(--accent); stroke: var(--accent)" x="18" y="36" width="18" height="18"/>
+              </g>
+            </svg>
+          </div>
+          <h3 class="h3">Spatial reasoning</h3>
+          <p class="muted">Rotate shapes in your head, mirror them, and fold flat nets into cubes to see which faces meet.</p>
+          <p class="cat-meta"><span class="badge">10 questions</span></p>
+        </article>
+
+        <article class="card cat-card">
+          <div class="cat-fig" aria-hidden="true">
+            <svg viewBox="0 0 220 120" width="100%" height="100%" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+              <g fill="none" stroke-width="2.2">
+                <rect x="4" y="46" width="34" height="34" rx="7" fill="var(--surface)"/><rect x="48" y="46" width="34" height="34" rx="7" fill="var(--surface)"/>
+                <rect x="92" y="46" width="34" height="34" rx="7" fill="var(--surface)"/><rect x="136" y="46" width="34" height="34" rx="7" fill="var(--surface)"/>
+                <rect x="180" y="46" width="34" height="34" rx="7" stroke="var(--highlight)" stroke-dasharray="5 5"/>
+              </g>
+              <g font-family="var(--font-display)" font-size="19" font-weight="700" fill="currentColor" stroke="none" text-anchor="middle" dominant-baseline="central">
+                <text x="21" y="64">3</text><text x="65" y="64">7</text><text x="109" y="64">11</text><text x="153" y="64">15</text>
+                <text x="197" y="64" fill="var(--highlight-text)">?</text>
+              </g>
+              <g fill="none" stroke="var(--accent)" stroke-width="2.2">
+                <path d="M21 40q22-24 44 0M65 40q22-24 44 0M109 40q22-24 44 0M153 40q22-24 44 0"/>
+              </g>
+              <g font-family="var(--font-body)" font-size="11" font-weight="700" fill="var(--accent)" stroke="none" text-anchor="middle">
+                <text x="43" y="22">+4</text><text x="87" y="22">+4</text><text x="131" y="22">+4</text><text x="175" y="22">+4</text>
+              </g>
+            </svg>
+          </div>
+          <h3 class="h3">Numerical &amp; sequence reasoning</h3>
+          <p class="muted">Number and letter series. Find the rule behind the sequence and give the next term.</p>
+          <p class="cat-meta"><span class="badge">8 questions</span></p>
+        </article>
+
       </div>
-      <div id="timer" class="timer" role="timer" aria-label="Time remaining">25:00</div>
     </div>
-    <div id="progress" class="progress" role="progressbar" aria-valuemin="1" aria-valuemax="30" aria-valuenow="1" aria-label="Progress"><div id="progress-fill"></div></div>
+  </section>
 
-    <div class="card q-card">
-      <h2 id="q-prompt" class="prompt" tabindex="-1"></h2>
-      <div id="q-stem" class="stem"></div>
-      <div id="q-options" class="options" role="group" aria-label="Answer options"></div>
-    </div>
-
-    <div class="nav">
-      <button type="button" class="btn" id="prev-btn">&larr; Previous</button>
-      <button type="button" class="btn primary" id="next-btn">Next &rarr;</button>
-    </div>
-
-    <div class="card palette-card">
-      <div class="palette-head">
-        <h3 class="h3">Jump to a question</h3>
-        <span id="answered-count" class="muted small"></span>
+  <!-- WHAT YOU GET -->
+  <section class="section" aria-labelledby="get-title">
+    <div class="container get-grid">
+      <div class="get-copy stack" style="--gap: 20px">
+        <p class="eyebrow">What you get</p>
+        <h2 class="h2" id="get-title">A result worth reading, not a teaser.</h2>
+        <p class="lede">The page you see when you finish is the whole product. Nothing is blurred, nothing is saved for later, and nothing arrives by email.</p>
+        <ul class="checks" role="list">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><strong>Estimated IQ with a 90% range.</strong> A number and an honest margin of error.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><strong>Percentile and category profile.</strong> Where you are strong and where you are still developing.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><strong>Every question explained.</strong> See the rule you missed, in plain language.</span></li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span><strong>A share card, if you want one.</strong> Your name is optional, and sharing is always your call.</span></li>
+        </ul>
+        <div><a class="btn btn-primary" href="/test">See your own results</a></div>
       </div>
-      <div id="palette" class="palette"></div>
-    </div>
 
-    <div class="finish">
-      <button type="button" class="btn quiet" id="finish-btn">Finish test</button>
-      <div id="finish-confirm" class="card confirm" hidden>
-        <p id="finish-text"></p>
-        <div class="row">
-          <button type="button" class="btn primary" id="finish-yes">Yes, finish and show my results</button>
-          <button type="button" class="btn" id="finish-no">Keep going</button>
+      <div class="get-mock-wrap">
+        <div class="mock card" role="img" aria-label="Preview of a results page. Estimated IQ 118, 90 percent range 111 to 125, 88th percentile, 24 of 30 correct. Category scores: pattern reasoning 83 percent, spatial reasoning 90 percent, numerical and sequence reasoning 63 percent.">
+          <div class="mock-head" aria-hidden="true">
+            <strong class="mock-name">Richa&rsquo;s results</strong>
+            <span class="badge">Standard &middot; 30 questions</span>
+          </div>
+          <div class="mock-hero" aria-hidden="true">
+            <div class="mock-iq">
+              <span class="mock-iq-num">118</span>
+              <span class="mock-iq-label">Estimated IQ</span>
+            </div>
+            <dl class="mock-stats">
+              <div><dt>90% range</dt><dd>111&ndash;125</dd></div>
+              <div><dt>Percentile</dt><dd>88th</dd></div>
+              <div><dt>Correct</dt><dd>24 / 30</dd></div>
+            </dl>
+          </div>
+          <svg class="mock-bell" viewBox="0 0 320 124" aria-hidden="true" focusable="false">
+            <path d="M196.7 100 L196.7 35.8 L203.3 42.3 L210 49.1 L216.7 55.8 L223.3 62.3 L230 68.5 L236.7 74.1 L243.3 79.1 L243.3 100 Z" fill="var(--accent)" fill-opacity="0.22"/>
+            <path d="M10 99.1 L20 98.3 L30 97.1 L40 95.3 L50 92.5 L60 88.6 L70 83.4 L80 76.6 L90 68.5 L100 59.1 L110 49.1 L120 39 L130 29.8 L140 22.5 L150 17.7 L160 16 L170 17.7 L180 22.5 L190 29.8 L200 39 L210 49.1 L220 59.1 L230 68.5 L240 76.6 L250 83.4 L260 88.6 L270 92.5 L280 95.3 L290 97.1 L300 98.3 L310 99.1" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+            <path d="M6 100H314" stroke="var(--line)" stroke-width="2"/>
+            <line x1="220" y1="52" x2="220" y2="100" stroke="var(--accent)" stroke-width="2.4" stroke-dasharray="3 3"/>
+            <circle cx="220" cy="59.1" r="6" fill="var(--accent)" stroke="var(--surface)" stroke-width="2.5"/>
+            <g font-family="var(--font-body)" font-size="10.5" fill="var(--muted)" text-anchor="middle"><text x="10" y="116">55</text><text x="85" y="116">70</text><text x="160" y="116">100</text><text x="235" y="116">130</text><text x="310" y="116">145</text></g>
+          </svg>
+          <ul class="mock-bars" role="presentation" aria-hidden="true">
+            <li><span>Pattern</span><i style="--v: 83%"></i><b>83%</b></li>
+            <li><span>Spatial</span><i style="--v: 90%"></i><b>90%</b></li>
+            <li><span>Series</span><i style="--v: 63%"></i><b>63%</b></li>
+          </ul>
+          <div class="mock-chips" aria-hidden="true">
+            <span class="chip chip--amber">Strongest: spatial reasoning</span>
+            <span class="chip">Solved 3 of the 4 hardest</span>
+          </div>
+          <div class="mock-explain" aria-hidden="true">
+            <span class="mock-q">Q14</span>
+            <p><strong>Solid triangle.</strong> Shapes cycle along the diagonals, and shading goes empty, grey, solid down the rows.</p>
+          </div>
+        </div>
+        <div class="mock-share" aria-hidden="true">
+          <span class="mock-share-brand">Unlocked IQ</span>
+          <span class="mock-share-num">118</span>
+          <span class="mock-share-line">Richa scored 118</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- RESULTS -->
-  <section id="results" class="screen" hidden aria-label="Results">
-    <div id="results-body"></div>
+  <!-- COMPARISON -->
+  <section class="section section--alt" aria-labelledby="cmp-title">
+    <div class="container">
+      <header class="section-head">
+        <p class="eyebrow">Nothing locked</p>
+        <h2 class="h2" id="cmp-title">What &ldquo;free&rdquo; usually means, and what it means here.</h2>
+      </header>
+      <div class="compare-wrap">
+        <table class="compare">
+          <caption class="visually-hidden">Unlocked IQ compared with typical paid IQ tests</caption>
+          <thead>
+            <tr><th scope="col"><span class="visually-hidden">Feature</span></th><th scope="col" class="compare-us">Unlocked IQ</th><th scope="col">Typical paid test</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Your results</th><td class="compare-us"><span class="tick" aria-hidden="true"></span>Everything, the moment you finish</td><td><span class="cross" aria-hidden="true"></span>A teaser, then a paywall</td></tr>
+            <tr><th scope="row">Email address</th><td class="compare-us"><span class="tick" aria-hidden="true"></span>Never asked</td><td><span class="cross" aria-hidden="true"></span>Required, then drip emails</td></tr>
+            <tr><th scope="row">Price</th><td class="compare-us"><span class="tick" aria-hidden="true"></span>Free. Always.</td><td><span class="cross" aria-hidden="true"></span>Pay to see your own score</td></tr>
+            <tr><th scope="row">Explanations</th><td class="compare-us"><span class="tick" aria-hidden="true"></span>Every question, in plain words</td><td><span class="cross" aria-hidden="true"></span>Rare, or another upsell</td></tr>
+            <tr><th scope="row">Honesty</th><td class="compare-us"><span class="tick" aria-hidden="true"></span>An estimate with a 90% range and stated limits</td><td><span class="cross" aria-hidden="true"></span>One confident number</td></tr>
+            <tr><th scope="row">Tracking</th><td class="compare-us"><span class="tick" aria-hidden="true"></span>No cookies, no ads</td><td><span class="cross" aria-hidden="true"></span>Often</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
-  <noscript><p class="card">This test needs JavaScript. Please enable it and reload.</p></noscript>
+  <!-- FAQ TEASER -->
+  <section class="section" aria-labelledby="faq-title">
+    <div class="container faq-split">
+      <header class="section-head section-head--left stack" style="--gap: 16px">
+        <p class="eyebrow">Questions</p>
+        <h2 class="h2" id="faq-title">Straight answers.</h2>
+        <p class="lede">The short version of what people ask before they start.</p>
+        <div><a class="btn" href="/faq">Read all questions</a></div>
+      </header>
+      <div class="faq">
+        <details>
+          <summary>Is it really free?</summary>
+          <div class="faq-body"><p>Yes. The full test, the full results, the explanations and the share card are all free. There is no premium tier and nothing is held back.</p></div>
+        </details>
+        <details>
+          <summary>How accurate is the score?</summary>
+          <div class="faq-body"><p>It is an estimate for fun and self-knowledge, not a clinical assessment. That is why you see a 90% range next to the number. <a href="/science">Read how scoring works</a>.</p></div>
+        </details>
+        <details>
+          <summary>Do I need to give my email?</summary>
+          <div class="faq-body"><p>No. There are no accounts and no email field. A name is optional and only used to personalise your results.</p></div>
+        </details>
+        <details>
+          <summary>Can I take it again?</summary>
+          <div class="faq-body"><p>Yes. A retake builds new questions with the same rules and difficulty, so memorising answers will not help. Practice mode is untimed and endless.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="section section--tight" aria-labelledby="cta-title">
+    <div class="container">
+      <div class="cta-band">
+        <div class="cta-copy stack" style="--gap: 12px">
+          <h2 class="h2" id="cta-title">Ready? It&rsquo;s free all the way through.</h2>
+          <p>Around 25 minutes, or 10 for the quick version. Full results at the end, no strings.</p>
+        </div>
+        <div class="cluster" style="--gap: 12px">
+          <a class="btn btn-highlight btn-lg" href="/test">Take the free test</a>
+          <a class="btn btn-lg cta-ghost" href="/practice">Practice first</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
-<div id="tip" class="tip" role="tooltip" hidden></div>
+<div id="site-footer"></div>
 </body>
 </html>

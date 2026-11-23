@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   matrixItems, matrixSpecs, key, segRows, segIds, union, xor, inter,
+  matrixVariant, matrixMeta, MATRIX_IDS, SEG_SYMMETRIES, confusablePairs,
 } from '../public/js/items-matrix.js';
+import { oracle, SYM, ROWS } from './lib/matrix-oracle.mjs';
 import {
   cellSvg, gridSvg, SHAPES, FILLS, SIZE_R, STROKE, DOT_RING, DOT_R,
   radiusFor, layout, shapeGeom, outerRadius,
@@ -233,4 +235,157 @@ test('key is order-independent and discriminating', () => {
   assert.notEqual(key(a), key([{ t: 'seg', id: 'h' }]));
   assert.notEqual(key([{ t: 'shape', shape: 'circle', fill: 'none', size: 'm', n: 1 }]),
     key([{ t: 'shape', shape: 'circle', fill: 'grey', size: 'm', n: 1 }]));
+});
+
+
+// ==========================================================================
+// Variants: 200 seeds per template, verified against an independent oracle.
+// ==========================================================================
+
+const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
+const SEG_OPS = { M5: ['OR', union], M8: ['XOR', xor], M11: ['AND', inter] };
+
+test('variants: seed 0 is the v1 item (byte for byte)', () => {
+  for (const id of MATRIX_IDS) {
+    assert.deepEqual(matrixVariant(id, 0).item, itemOf(id), id);
+  }
+});
+
+test('variants: SEG_SYMMETRIES match the coordinate-derived symmetries and form the full group', () => {
+  assert.deepEqual(SEG_SYMMETRIES, SYM);
+  assert.equal(new Set(SEG_SYMMETRIES.map((m) => JSON.stringify(m))).size, 8);
+  for (const m of SEG_SYMMETRIES) assert.deepEqual(Object.keys(m).sort(), [...Object.keys(SYM[0])].sort());
+});
+
+for (const id of MATRIX_IDS) {
+  test(`${id} variants: 200 seeds, one correct option, distinct options, oracle agrees`, () => {
+    const stems = new Set();
+    for (const seed of SEEDS) {
+      const { item, meta } = matrixVariant(id, seed);
+      const where = `${id}#${seed}`;
+      const o = oracle(id, meta);
+      // contract
+      assert.equal(item.id, id);
+      assert.equal(item.category, 'matrix');
+      assert.equal(item.options.length, 6, where);
+      assert.equal(item.optionCols, 3);
+      assert.equal(item.b, specOf(id).b);
+      // stem = oracle grid with "?" in (2,2)
+      assert.equal(item.stem, gridSvg((r, c) => (r === 2 && c === 2 ? null : o.rule(r, c))), `${where}: stem`);
+      // exactly one option renders the rule's (2,2) cell, and it is the answer
+      const truth = cellSvg(o.rule(2, 2));
+      assert.equal(item.options.filter((x) => x === truth).length, 1, `${where}: exactly one correct`);
+      assert.equal(item.options[item.answer], truth, `${where}: answer index`);
+      assert.equal(key(o.answer), key(o.rule(2, 2)), `${where}: oracle answer = rule(2,2)`);
+      // options distinct as markup and as cells; distractors are exactly the oracle's, none equals the answer
+      assert.equal(new Set(item.options).size, 6, `${where}: markup distinct`);
+      const cells = [o.answer, ...o.distractors];
+      assert.equal(new Set(cells.map(key)).size, 6, `${where}: cells distinct`);
+      assert.deepEqual([...item.options].sort(), cells.map((c) => cellSvg(c)).sort(), `${where}: option set`);
+      // markup rules
+      checkMarkup(item.stem, `${where} stem`);
+      item.options.forEach((x, i) => checkMarkup(x, `${where} option ${i}`));
+      // rule cells are never empty and use only valid vocabulary
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) assert.ok(o.rule(r, c).length > 0);
+      stems.add(item.stem);
+      // deterministic
+      assert.deepEqual(matrixVariant(id, seed).item, item);
+    }
+    assert.ok(stems.size >= 10, `${id}: only ${stems.size} distinct stems over 200 seeds`);
+  });
+}
+
+for (const [id, [name, op]] of Object.entries(SEG_OPS)) {
+  test(`${id} variants: rows 0-1 pin down ${name}; rival rules give a different answer`, () => {
+    for (const seed of SEEDS) {
+      const { meta } = matrixVariant(id, seed);
+      const o = oracle(id, meta);
+      // un-transpose to read the (row, col) layout of the rule
+      const at = (r, c) => segIds(meta.transpose ? o.rule(c, r) : o.rule(r, c));
+      const rows = [0, 1, 2].map((r) => [at(r, 0), at(r, 1), at(r, 2)]);
+      const same = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+      for (const [a, b, c] of rows) assert.ok(same(op(a, b), c), `${id}#${seed}: col3 = ${name}`);
+      const ops = { OR: union, XOR: xor, AND: inter };
+      for (const [rn, rop] of Object.entries(ops)) {
+        if (rn === name) continue;
+        const bothEarly = rows.slice(0, 2).every(([a, b, c]) => same(rop(a, b), c));
+        const disjoint = rows.every(([a, b]) => inter(a, b).length === 0);
+        if (id === 'M5' && rn === 'XOR') { assert.ok(disjoint); continue; } // OR = XOR on disjoint sets (as in v1)
+        assert.ok(!bothEarly, `${id}#${seed}: rows 0-1 do not rule out ${rn}`);
+        const [a2, b2] = rows[2];
+        assert.ok(!same(rop(a2, b2), segIds(o.answer)), `${id}#${seed}: ${rn} gives the same answer`);
+      }
+    }
+  });
+}
+
+test('variants: shape vocabulary has no confusable pairs (square/diamond, pentagon/hexagon) within a set', () => {
+  for (const id of MATRIX_IDS) {
+    for (const seed of SEEDS) {
+      const m = matrixMeta(id, seed);
+      const sets = [m.shapes, m.outer, m.inner].filter(Boolean);
+      if (m.shapes && m.extra) sets.push([...m.shapes, m.extra]);
+      for (const set of sets) assert.equal(confusablePairs(set), 0, `${id}#${seed}: ${set}`);
+      if (m.shapes) assert.equal(new Set(m.shapes).size, m.shapes.length);
+      if (m.outer) assert.equal(new Set([...m.outer, ...m.inner]).size, 6, `${id}#${seed}: outer/inner overlap`);
+    }
+  }
+});
+
+test('variants: M7 centre shapes clear the dot ring; M9 inner shapes fit inside outer shapes', () => {
+  // distance from the centre to the nearest edge of a polygon / radius of a circle
+  const inradius = (shape, r) => {
+    const g = shapeGeom(shape, 0, 0, r);
+    if (g.type === 'circle') return g.r - STROKE / 2;
+    let best = Infinity;
+    for (let i = 0; i < g.pts.length; i++) {
+      const [x1, y1] = g.pts[i];
+      const [x2, y2] = g.pts[(i + 1) % g.pts.length];
+      const d = Math.abs(x1 * y2 - x2 * y1) / Math.hypot(x2 - x1, y2 - y1);
+      best = Math.min(best, d);
+    }
+    return best - STROKE / 2;
+  };
+  for (const seed of SEEDS) {
+    for (const shape of matrixMeta('M7', seed).shapes) {
+      assert.ok(outerRadius(shape, SIZE_R.m) + DOT_R + STROKE / 2 < DOT_RING, `M7#${seed} ${shape}`);
+    }
+    const m = matrixMeta('M9', seed);
+    for (const o of m.outer) {
+      assert.ok(['circle', 'square', 'hexagon', 'pentagon', 'diamond'].includes(o), `outer ${o}`);
+      for (const i of m.inner) {
+        assert.ok(outerRadius(i, SIZE_R.xs) < inradius(o, SIZE_R.l) - 2, `M9#${seed}: ${i} not inside ${o}`);
+      }
+    }
+  }
+});
+
+test('variants: M3 rotations are multiples of 45, the 6 options differ, and steps are constant', () => {
+  for (const seed of SEEDS) {
+    const m = matrixMeta('M3', seed);
+    assert.equal(m.off % 45, 0);
+    const o = oracle('M3', m);
+    const rots = [o.answer, ...o.distractors].map((c) => c[0].rot);
+    assert.equal(new Set(rots).size, 6);
+    for (const r of rots) assert.ok(r % 45 === 0 && r >= 0 && r < 360);
+    // each step across / down turns by a constant multiple of 45 degrees (rule is recomputed from the grid)
+    const rotAt = (r, c) => o.rule(r, c)[0].rot;
+    const diff = (a, b2) => (((b2 - a) % 360) + 360) % 360;
+    const stepAcross = diff(rotAt(0, 0), rotAt(0, 1));
+    const stepDown = diff(rotAt(0, 0), rotAt(1, 0));
+    assert.deepEqual([stepAcross, stepDown].sort(), m.transpose ? [m.sign > 0 ? 45 : 315, m.sign > 0 ? 90 : 270].sort() : [m.sign > 0 ? 45 : 315, m.sign > 0 ? 90 : 270].sort());
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+      if (c < 2) assert.equal(diff(rotAt(r, c), rotAt(r, c + 1)), stepAcross);
+      if (r < 2) assert.equal(diff(rotAt(r, c), rotAt(r + 1, c)), stepDown);
+    }
+  }
+});
+
+test('variants: M12 operands are positive, distinct and every row sums to its total', () => {
+  for (const seed of SEEDS) {
+    const m = matrixMeta('M12', seed);
+    assert.deepEqual(m.pairs.map(([a, b]) => a + b), [3, 4, 5]);
+    for (const [a, b] of m.pairs) assert.ok(a >= 1 && b >= 1 && a <= 4 && b <= 4 && a !== b);
+    assert.equal(new Set(m.pairs.map((p) => p.join())).size, 3);
+  }
 });

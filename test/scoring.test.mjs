@@ -136,3 +136,72 @@ test('profile text covers every band', () => {
   assert.equal(new Set(bands).size, 5);
   [145, 120, 105, 90, 60].forEach((iq) => assert.ok(overallProfile(iq).length > 40));
 });
+
+// ---- per-item discrimination `a` ----
+
+import { fisherInfo, itemA, DISCRIMINATION } from '../public/js/scoring.js';
+
+test('items without `a` score exactly as with a = 1.3', () => {
+  const withA = items.map((it) => ({ ...it, a: DISCRIMINATION }));
+  const ans = items.map((it, i) => (i % 3 ? it.answer : -1));
+  assert.deepEqual(score(withA, ans), score(items, ans));
+  assert.equal(itemA({}), DISCRIMINATION);
+  assert.equal(itemA({ a: 2 }), 2);
+  assert.equal(itemA({ a: 0 }), DISCRIMINATION, 'non-positive a falls back');
+  assert.equal(itemA({ a: 'x' }), DISCRIMINATION);
+});
+
+test('a higher `a` makes the same answer pattern more decisive', () => {
+  const mk = (a) => items.map((it) => ({ ...it, a }));
+  const ans = items.map((it) => it.answer);
+  const lo = score(mk(0.6), ans);
+  const mid = score(mk(1.3), ans);
+  const hi = score(mk(2.5), ans);
+  // Flat items need a more extreme ability to explain a perfect run, so the estimates differ.
+  assert.ok(Math.abs(lo.theta - mid.theta) > 0.05 && Math.abs(mid.theta - hi.theta) > 0.05, `${lo.theta} ${mid.theta} ${hi.theta}`);
+  assert.ok(lo.theta > mid.theta && mid.theta > hi.theta, 'perfect run: flatter items imply a higher theta');
+  assert.ok(hi.se < mid.se && mid.se < lo.se, 'more discrimination, less uncertainty');
+  // ...and a run of all wrong answers goes the other way
+  const wrong = items.map((it) => (it.answer + 1) % it.options.length);
+  assert.ok(score(mk(0.6), wrong).theta < score(mk(2.5), wrong).theta);
+});
+
+test('per-item a is used item by item (one steep item moves theta more than one shallow item)', () => {
+  const base = items.map((it) => ({ ...it, a: 1.3 }));
+  const ans = items.map((it, i) => (i % 2 ? it.answer : (it.answer + 1) % it.options.length));
+  const t0 = score(base, ans).theta;
+  const k = 14; // a correct item near the middle of the range
+  const steep = base.map((it, i) => (i === k ? { ...it, a: 3 } : it));
+  const shallow = base.map((it, i) => (i === k ? { ...it, a: 0.3 } : it));
+  const flag = ans[k] === items[k].answer;
+  const d = (x) => score(x, ans).theta - t0;
+  if (flag) assert.ok(d(steep) > d(shallow));
+  else assert.ok(d(steep) < d(shallow));
+});
+
+test('hardest[].pAvg uses the item\'s own a', () => {
+  const custom = items.map((it) => ({ ...it, a: 2 }));
+  const r = score(custom, custom.map((it) => it.answer));
+  for (const h of r.hardest) {
+    const it = custom[h.index - 1];
+    assert.ok(Math.abs(h.pAvg - p3pl(0, it.b, it.options.length, 2)) < 1e-12);
+  }
+});
+
+test('fisherInfo: peaks near b, rises with a, shrinks with more options, matches a numeric derivative', () => {
+  const peak = (a, n) => {
+    let best = -Infinity; let at = 0;
+    for (let t = -4; t <= 4; t += 0.01) { const f = fisherInfo(t, 0.5, n, a); if (f > best) { best = f; at = t; } }
+    return { best, at };
+  };
+  const p = peak(1.3, 5);
+  assert.ok(p.at > 0.5 && p.at < 1.3, `3PL information peaks slightly above b (got ${p.at})`);
+  assert.ok(peak(2, 5).best > peak(1, 5).best);
+  assert.ok(peak(1.3, 4).best > peak(1.3, 6).best || peak(1.3, 4).best < peak(1.3, 6).best); // defined for any option count
+  for (const [theta, b, n, a] of [[0, 0, 5, 1.3], [1, -0.5, 4, 2], [-1.5, 0.3, 6, 0.8]]) {
+    const h = 1e-5;
+    const dP = (p3pl(theta + h, b, n, a) - p3pl(theta - h, b, n, a)) / (2 * h);
+    const P = p3pl(theta, b, n, a);
+    assert.ok(Math.abs(fisherInfo(theta, b, n, a) - (dP * dP) / (P * (1 - P))) < 1e-6);
+  }
+});

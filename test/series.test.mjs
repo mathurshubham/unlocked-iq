@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seriesItems } from '../public/js/items-series.js';
+import { seriesItems, seriesVariant, SERIES_IDS } from '../public/js/items-series.js';
 
 const byId = Object.fromEntries(seriesItems.map((i) => [i.id, i]));
 const L = (n) => String.fromCharCode(65 + n);
@@ -68,4 +68,124 @@ for (const [id, c] of Object.entries(CASES)) {
 test('option order is deterministic', async () => {
   const again = await import('../public/js/items-series.js?again');
   assert.deepEqual(again.seriesItems, seriesItems);
+});
+
+
+// ==========================================================================
+// Variants: 200 seeds per template. Everything is recomputed from the
+// rendered stem alone (terms parsed from the markup), with recurrences.
+// ==========================================================================
+
+const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
+const parseStem = (stem) => {
+  const m = stem.match(/^<div class="series">(.*), <span class="q">\?<\/span><\/div>$/);
+  assert.ok(m, 'stem format: ' + stem);
+  return m[1].split(', ');
+};
+const isLetter = (x) => /^[A-Z]$/.test(x);
+
+// For each template: verify the rule on the shown terms and return the next term it implies.
+const RULES = {
+  N1(t) {
+    const n = t.map(Number); const d = n[1] - n[0];
+    assert.ok(d >= 3);
+    n.forEach((v, i) => i && assert.equal(v - n[i - 1], d));
+    return String(n[3] + d);
+  },
+  N2(t) {
+    const n = t.map(Number); const m = n[1] / n[0];
+    assert.ok(Number.isInteger(m) && m >= 3 && m <= 5);
+    n.forEach((v, i) => i && assert.equal(v, n[i - 1] * m));
+    return String(n[3] * m);
+  },
+  N3(t) {
+    const n = t.map(Number); const k = Math.sqrt(n[0]);
+    assert.ok(Number.isInteger(k));
+    n.forEach((v, i) => assert.equal(v, (k + i) ** 2));
+    return String((k + n.length) ** 2);
+  },
+  N4(t) {
+    assert.ok(t.every(isLetter));
+    const c = t.map((x) => x.charCodeAt(0)); const d = c[1] - c[0];
+    assert.ok(d === 3 || d === 4);
+    c.forEach((v, i) => i && assert.equal(v - c[i - 1], d));
+    return String.fromCharCode(c[3] + d);
+  },
+  N5(t) {
+    const n = t.map(Number); const c = n[1] - 2 * n[0];
+    assert.ok(c >= 1 && c <= 3);
+    n.forEach((v, i) => i && assert.equal(v, 2 * n[i - 1] + c));
+    return String(2 * n[4] + c);
+  },
+  N6(t) {
+    const n = t.map(Number); const p = n[1] - n[0]; const q = n[1] - n[2];
+    assert.ok(p - q >= 2 && q >= 1);
+    n.forEach((v, i) => i && assert.equal(v - n[i - 1], i % 2 ? p : -q));
+    return String(n[5] - q);
+  },
+  N7(t) {
+    assert.ok(t.every(isLetter));
+    const c = t.map((x) => x.charCodeAt(0)); const g = c[1] - c[0];
+    assert.ok(g === 1 || g === 2);
+    c.forEach((v, i) => i && assert.equal(v - c[i - 1], g + i - 1));
+    return String.fromCharCode(c[4] + g + 4);
+  },
+  N8(t) {
+    const n = t.map(Number); const g = n[1] - n[0];
+    assert.notEqual(n[0], g, 'would be plain doubling');
+    n.forEach((v, i) => i && assert.equal(v - n[i - 1], g * 2 ** (i - 1)));
+    return String(n[5] + g * 32);
+  },
+};
+
+test('variants: seed 0 is the v1 item (byte for byte)', () => {
+  for (const id of SERIES_IDS) assert.deepEqual(seriesVariant(id, 0).item, byId[id], id);
+});
+
+for (const id of SERIES_IDS) {
+  test(`${id} variants: 200 seeds, rule recomputed, one correct option, distinct, friendly numbers`, () => {
+    const stems = new Set();
+    for (const seed of SEEDS) {
+      const { item } = seriesVariant(id, seed);
+      const where = `${id}#${seed}`;
+      const shown = parseStem(item.stem);
+      const expected = RULES[id](shown);
+      assert.equal(item.id, id);
+      assert.equal(item.options.length, 5, where);
+      assert.equal(new Set(item.options).size, 5, where + ': distinct');
+      assert.equal(item.options.filter((o) => o === expected).length, 1, where + ': exactly one correct');
+      assert.equal(item.options[item.answer], expected, where);
+      for (const o of [...item.options, ...shown]) {
+        if (isLetter(o)) continue;
+        assert.match(o, /^[1-9]\d{0,3}$/, `${where}: friendly number ${o}`);
+      }
+      // letters only with letters, numbers only with numbers
+      const letters = isLetter(shown[0]);
+      for (const o of item.options) assert.equal(isLetter(o), letters, where);
+      assert.equal(item.prompt, 'Which number or letter comes next in the sequence?');
+      assert.equal(item.optionCols, 5);
+      assert.deepEqual(Object.keys(item).sort(), ['answer', 'b', 'category', 'id', 'optionCols', 'options', 'prompt', 'stem']);
+      stems.add(item.stem);
+      assert.deepEqual(seriesVariant(id, seed).item, item);
+    }
+    assert.ok(stems.size >= 8, `${id}: ${stems.size} distinct stems`);
+  });
+}
+
+test('series variants: distractors follow the v1 recipe (plausible wrong rules)', () => {
+  for (const seed of SEEDS) {
+    // N1: answer +-1, +-2
+    let { item, meta } = seriesVariant('N1', seed);
+    const a = Number(meta.answer);
+    assert.deepEqual(item.options.map(Number).sort((x, y) => x - y).filter((x) => x !== a), [a - 2, a - 1, a + 1, a + 2]);
+    // N2: distractors include the "times m-1" and "add the last two" slips
+    ({ item, meta } = seriesVariant('N2', seed));
+    const s = meta.shown.map(Number);
+    assert.ok(meta.distractors.map(Number).includes(s[3] + s[2]));
+    assert.ok(meta.distractors.map(Number).includes(s[3] * (meta.params.m - 1)));
+    // N8: slips repeat the previous gap / halfway gap
+    ({ item, meta } = seriesVariant('N8', seed));
+    const t = meta.shown.map(Number);
+    assert.ok(meta.distractors.map(Number).includes(t[5] + (t[5] - t[4])));
+  }
 });
