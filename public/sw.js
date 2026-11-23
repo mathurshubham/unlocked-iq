@@ -3,7 +3,7 @@
 // - Never caches /api/*, /og/* or /r/* (always network, never stored).
 // - Fonts are cross-origin and skipped.
 // Bump CACHE_VERSION whenever the shell changes shape.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE = `unlocked-iq-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -13,6 +13,7 @@ const SHELL = [
   '/js/test-app.js', '/js/results-app.js', '/js/practice-app.js',
   '/js/engine.js', '/js/cat.js', '/js/explain.js', '/js/calibration.js', '/js/scoring.js',
   '/js/items.js', '/js/items-matrix.js', '/js/items-spatial.js', '/js/items-series.js',
+  '/js/items-figural.js', '/js/items-spatial2.js', '/js/items-numeric.js', '/js/items-extra.js',
   '/js/svg.js', '/js/cube.js', '/js/rng.js',
   '/js/charts.js', '/js/card.js', '/js/share.js', '/js/profile.js', '/js/state.js', '/js/api.js',
   '/favicon.svg', '/manifest.webmanifest',
