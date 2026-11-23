@@ -81,7 +81,7 @@ test('no repeats, terminates at length, over many seeds, thetas and lengths', ()
       assert.equal(cat.done, true);
     }
   }
-  assert.equal(createCat({ length: 99 }).length, 30, 'length clamps to the bank');
+  assert.equal(createCat({ length: 99 }).length, Math.min(60, TEMPLATES.length), 'length clamps to the payload cap');
   assert.equal(createCat({ length: 0 }).length, 1);
 });
 

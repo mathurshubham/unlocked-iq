@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  TEMPLATES, buildItem, buildForm, itemSeed, practiceItem, CATEGORY_LABELS,
+  LEGACY_TEMPLATES as TEMPLATES, buildItem, buildForm, itemSeed, practiceItem, CATEGORY_LABELS,
 } from '../public/js/engine.js';
 import { ITEMS, CATEGORIES, ITEMS_VERSION } from '../public/js/items.js';
 import { CALIBRATION } from '../public/js/calibration.js';
@@ -30,7 +30,7 @@ test('TEMPLATES: 30 templates, 12/10/8 per category, sorted by b, a defaults to 
   assert.deepEqual([count('matrix'), count('spatial'), count('series')], [12, 10, 8]);
   for (let i = 1; i < TEMPLATES.length; i++) assert.ok(TEMPLATES[i].b >= TEMPLATES[i - 1].b);
   for (const t of TEMPLATES) {
-    assert.deepEqual(Object.keys(t).sort(), ['a', 'b', 'category', 'id', 'nOptions']);
+    assert.deepEqual(Object.keys(t).sort(), ['a', 'b', 'category', 'family', 'id', 'nOptions']);
     const cal = CALIBRATION[t.id];
     assert.equal(t.a, cal?.a ?? 1.3);
     if (!cal) assert.equal(t.b, V1.find((x) => x.id === t.id).b);
@@ -81,23 +81,23 @@ test('buildForm(seed): 30 items ordered by b, deterministic, a differs from seed
     const f = buildForm(seed);
     assert.equal(f.length, 30);
     for (let i = 1; i < 30; i++) assert.ok(f[i].b >= f[i - 1].b);
-    assert.deepEqual(f.map((i) => i.id), TEMPLATES.map((t) => t.id));
+    // v3: seeded forms draw from the whole pool (see engine-v3.test.mjs for quotas and spread).
+    assert.equal(new Set(f.map((i) => i.id)).size, 30);
     assert.deepEqual(buildForm(seed), f, 'deterministic');
     f.forEach((it) => {
       assert.equal(it.seed, seed);
       assert.equal(it.variantSeed, itemSeed(seed, it.id));
     });
   }
-  const f0 = buildForm(0).map((i) => JSON.stringify(contract(i)));
-  const f1 = buildForm(31337).map((i) => JSON.stringify(contract(i)));
-  const same = f0.filter((x, i) => x === f1[i]).length;
+  const f0 = new Set(buildForm(0).map((i) => JSON.stringify(contract(i))));
+  const same = buildForm(31337).filter((i) => f0.has(JSON.stringify(contract(i)))).length;
   assert.ok(same <= 5, `seed 31337 reproduced ${same} v1 items`);
   // each item is correctly answerable
   for (const it of buildForm(31337)) assert.ok(it.answer >= 0 && it.answer < it.options.length);
 });
 
 test('buildItem: unknown template throws; extra fields present', () => {
-  assert.throws(() => buildItem('X1', 0));
+  assert.throws(() => buildItem('V99', 0));
   const it = buildItem('M2', 5);
   assert.equal(it.templateId, 'M2');
   assert.equal(it.id, 'M2');

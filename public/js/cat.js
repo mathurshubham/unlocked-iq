@@ -5,16 +5,22 @@
 // (each category stays within +-1 of its target share of the items given so far).
 import { TEMPLATES, buildItem } from './engine.js';
 import { score, fisherInfo } from './scoring.js';
+import { rng } from './rng.js';
 
 export const CATEGORY_TARGETS = { matrix: 0.4, spatial: 0.33, series: 0.27 };
 const CATS = Object.keys(CATEGORY_TARGETS);
 export const DEFAULT_LENGTH = 15;
 
-const clampLength = (n) => Math.max(1, Math.min(TEMPLATES.length, Math.floor(n)));
+// Capped at 60: the result payload accepts at most 60 items.
+export const MAX_LENGTH = Math.min(60, TEMPLATES.length);
+const clampLength = (n) => Math.max(1, Math.min(MAX_LENGTH, Math.floor(n)));
 
 // Choose the next template id given what has been asked and answered.
 // `answered` are the built items already answered (same order as `answers`).
-export function chooseNext(tids, answered, answers) {
+// opts.avoid: template ids to skip when possible (seen before).
+// opts.randomesque: pick at random (seeded by opts.seed) among the top-N most informative
+// templates, so repeat takers see different questions. 1 = pure max information.
+export function chooseNext(tids, answered, answers, { avoid = null, randomesque = 1, seed = 0 } = {}) {
   const used = new Set(tids);
   const theta = answered.length ? score(answered, answers).theta : 0;
   const counts = Object.fromEntries(CATS.map((c) => [c, 0]));
@@ -36,20 +42,22 @@ export function chooseNext(tids, answered, answers) {
     );
     eligible = open.slice(0, 1);
   }
-  let best = null;
-  let bestInfo = -Infinity;
-  for (const t of TEMPLATES) {
-    if (used.has(t.id) || !eligible.includes(t.category)) continue;
-    const info = fisherInfo(theta, t.b, t.nOptions, t.a);
-    if (info > bestInfo + 1e-12) {
-      best = t;
-      bestInfo = info;
-    }
+  let cands = TEMPLATES.filter((t) => !used.has(t.id) && eligible.includes(t.category));
+  if (avoid && avoid.size) {
+    const fresh = cands.filter((t) => !avoid.has(t.id));
+    if (fresh.length) cands = fresh;
   }
-  return best ? best.id : null;
+  const ranked = cands
+    .map((t) => ({ t, info: fisherInfo(theta, t.b, t.nOptions, t.a) }))
+    .sort((x, y) => y.info - x.info || x.t.id.localeCompare(y.t.id));
+  if (!ranked.length) return null;
+  const n = Math.max(1, Math.min(ranked.length, Math.floor(randomesque)));
+  if (n === 1) return ranked[0].t.id;
+  const r = rng(`cat:${seed >>> 0}:${k}`);
+  return ranked[Math.floor(r() * n)].t.id;
 }
 
-function makeCat({ formSeed, length, tids, answers }) {
+function makeCat({ formSeed, length, tids, answers, avoid = null, randomesque = 1 }) {
   const items = tids.map((id) => buildItem(id, formSeed));
   const state = { items, answers: answers.slice() };
 
@@ -68,7 +76,7 @@ function makeCat({ formSeed, length, tids, answers }) {
       if (cat.done) return null;
       if (cat.pending) return cat.pending;
       const answered = state.items.slice(0, state.answers.length);
-      const id = chooseNext(state.items.map((i) => i.templateId), answered, state.answers);
+      const id = chooseNext(state.items.map((i) => i.templateId), answered, state.answers, { avoid, randomesque, seed: formSeed });
       if (!id) return null;
       const item = buildItem(id, formSeed);
       state.items.push(item);
@@ -86,18 +94,20 @@ function makeCat({ formSeed, length, tids, answers }) {
     // Score of what has been answered so far (same shape as scoring.score).
     result() { return score(state.items.slice(0, state.answers.length), state.answers); },
     toJSON() {
-      return { v: 1, formSeed, length, tids: state.items.map((i) => i.templateId), answers: state.answers.slice() };
+      const j = { v: 1, formSeed, length, tids: state.items.map((i) => i.templateId), answers: state.answers.slice() };
+      if (randomesque > 1) j.rq = randomesque;
+      return j;
     },
   };
   return cat;
 }
 
-export function createCat({ formSeed = 0, length = DEFAULT_LENGTH } = {}) {
-  return makeCat({ formSeed: formSeed >>> 0, length: clampLength(length), tids: [], answers: [] });
+export function createCat({ formSeed = 0, length = DEFAULT_LENGTH, avoid = null, randomesque = 1 } = {}) {
+  return makeCat({ formSeed: formSeed >>> 0, length: clampLength(length), tids: [], answers: [], avoid, randomesque });
 }
 
 // Restore from toJSON() output (object or JSON string). Throws on bad input.
-export function catFromJSON(json) {
+export function catFromJSON(json, { avoid = null } = {}) {
   const j = typeof json === 'string' ? JSON.parse(json) : json;
   const ids = new Set(TEMPLATES.map((t) => t.id));
   const ok =
@@ -107,7 +117,8 @@ export function catFromJSON(json) {
     j.answers.length >= j.tids.length - 1 &&
     j.tids.every((t) => ids.has(t)) && new Set(j.tids).size === j.tids.length;
   if (!ok) throw new Error('bad cat state');
-  const cat = makeCat({ formSeed: j.formSeed >>> 0, length: clampLength(j.length), tids: j.tids, answers: j.answers });
+  const rq = Number.isInteger(j.rq) && j.rq > 1 && j.rq <= 10 ? j.rq : 1;
+  const cat = makeCat({ formSeed: j.formSeed >>> 0, length: clampLength(j.length), tids: j.tids, answers: j.answers, avoid, randomesque: rq });
   cat.items.forEach((it, i) => {
     if (i < j.answers.length && !(Number.isInteger(j.answers[i]) && j.answers[i] >= -1 && j.answers[i] < it.options.length)) {
       throw new Error('bad cat state');

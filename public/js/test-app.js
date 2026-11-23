@@ -7,7 +7,7 @@ import { encodeShare } from './share.js';
 import {
   newState, newSeed, loadState, saveState, clearState, toPayload, remainingSecs,
   pauseClock, resumeClock,
-  QUICK_LENGTH, SEEN_KEY, readKey, writeKey,
+  QUICK_LENGTH, SEEN_KEY, readKey, writeKey, readSeenTids, addSeenTids,
 } from './state.js';
 import { postResult, postResponses, track } from './api.js';
 import { ringMarkup, ringOffset } from './charts.js';
@@ -274,13 +274,13 @@ function showWarm(cfg) {
 function startTest(cfg) {
   const seed = newSeed();
   if (cfg.mode === 'quick') {
-    cat = createCat({ formSeed: seed, length: QUICK_LENGTH });
+    cat = createCat({ formSeed: seed, length: QUICK_LENGTH, avoid: new Set(readSeenTids()), randomesque: 3 });
     const first = cat.next();
     S = newState({ ...cfg, seed, tids: [first.id] });
     items = [first];
     S.cat = cat.toJSON();
   } else {
-    const form = buildForm(seed);
+    const form = buildForm(seed, { avoid: new Set(readSeenTids()) });
     S = newState({ ...cfg, seed, tids: form.map((it) => it.id) });
     items = form;
   }
@@ -295,7 +295,7 @@ function resumeTest(resume) {
   S = resume.s;
   try {
     if (S.mode === 'quick') {
-      cat = catFromJSON(S.cat);
+      cat = catFromJSON(S.cat, { avoid: new Set(readSeenTids()) });
       // next() is idempotent: it returns the pending question, or picks one if none is pending.
       if (!cat.done) cat.next();
       const pendingPick = S.answers[cat.answers.length] ?? -1;
@@ -814,6 +814,7 @@ async function finish(auto) {
   $('#fin-h').focus({ preventScroll: true });
 
   const payload = toPayload(S);
+  addSeenTids(payload.tids);
   let theta = 0;
   try {
     theta = score(items.slice(0, payload.tids.length), payload.a).theta;

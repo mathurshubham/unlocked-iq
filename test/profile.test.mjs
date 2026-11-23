@@ -45,5 +45,5 @@ test('strengths work for seeded forms and partial (quick-mode) item subsets', ()
       for (const c of s) assert.doesNotMatch(c.title + ' ' + c.text, NEG);
     }
   }
-  assert.equal(TEMPLATES.length, form.length);
+  assert.equal(form.length, 30);
 });

@@ -6,6 +6,9 @@ import { cleanName } from './share.js';
 export const STATE_KEY = 'unlocked:state';
 export const PRACTICE_KEY = 'unlocked:practice';
 export const SEEN_KEY = 'unlocked:warmup-seen';
+// Template ids this browser has been shown in finished tests (most recent last).
+export const SEEN_TIDS_KEY = 'unlocked:seen-tids';
+export const SEEN_TIDS_MAX = 150;
 export const STATE_V = 2;
 export const LIMITS = { standard: 25 * 60, quick: 15 * 60 };
 export const QUICK_LENGTH = 15;
@@ -43,6 +46,19 @@ export function removeKey(key, storage = defaultStorage()) {
 }
 
 // uint32 >= 1 (seed 0 is reserved for the v1 form).
+export function readSeenTids(storage) {
+  try {
+    const v = JSON.parse(readKey(SEEN_TIDS_KEY, storage) || '[]');
+    return Array.isArray(v) ? v.filter((t) => typeof t === 'string' && /^[A-Z][0-9]{1,3}$/.test(t)).slice(-SEEN_TIDS_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+export function addSeenTids(tids, storage) {
+  const seen = readSeenTids(storage).filter((t) => !tids.includes(t));
+  writeKey(SEEN_TIDS_KEY, JSON.stringify([...seen, ...tids].slice(-SEEN_TIDS_MAX)), storage);
+}
+
 export function newSeed() {
   try {
     const a = new Uint32Array(1);

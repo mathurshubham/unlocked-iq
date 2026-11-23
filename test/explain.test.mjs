@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TEMPLATES, buildItem } from '../public/js/engine.js';
+// These tests cover the 30 v1 templates (the v3 families have their own test files).
+import { LEGACY_TEMPLATES as TEMPLATES, buildItem } from '../public/js/engine.js';
 import { explain } from '../public/js/explain.js';
 import { matrixVariant } from '../public/js/items-matrix.js';
 import { spatialVariant } from '../public/js/items-spatial.js';

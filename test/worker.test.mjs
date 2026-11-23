@@ -20,7 +20,7 @@ import { buildItem } from '../public/js/engine.js';
 import { calibrate, estimateB, render } from '../scripts/calibrate.mjs';
 import { readFileSync } from 'node:fs';
 
-const tids = [...KNOWN_TIDS];
+const tids = [...KNOWN_TIDS].slice(0, 30);
 const correctAnswers = (ids, seed) => ids.map((id) => buildItem(id, seed).answer);
 const standard = (over = {}) => ({ v: 2, mode: 'standard', seed: 0, tids, a: correctAnswers(tids, 0), secs: 600, ...over });
 const quick = (over = {}) => {

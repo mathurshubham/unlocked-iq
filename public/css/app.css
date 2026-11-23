@@ -758,3 +758,7 @@ details.rv[open] > summary::before { transform: rotate(45deg); }
 .ring.untimed .ring-prog { stroke: var(--muted); }
 .res-untimed { margin: var(--s3) auto 0; max-width: 520px; font-size: 0.9rem; color: var(--muted); }
 .res-untimed .badge { margin-right: 6px; }
+
+/* v3 item families: larger option figures where detail matters; hidden-figure target at option scale */
+.opts-lg .opt-fig svg { max-width: 160px; }
+.q-stem > svg[data-scale="option"], .opts-same .opt-fig svg { width: 116px; max-width: 116px; }

@@ -28,7 +28,12 @@ export function isTyping(target) {
 // ---- option grid markup (test runner, warm-up, practice) ----
 export function optionsMarkup(item, { selected = -1, labelPrefix = 'Option' } = {}) {
   const cols = item.optionCols || 3;
-  const textual = item.category === 'series';
+  // Plain-text options (numbers, letters, words) get the big text style; figures keep the figure style.
+  const textual = item.options.every((o) => !String(o).trim().startsWith('<'));
+  // Detailed figures (3D objects, cube views, folded paper, piece pairs, hidden shapes) need room on phones.
+  const tid = String(item.templateId || item.id || '');
+  const large = /^[YCPH]\d/.test(tid);
+  const twoUp = large || /^E\d/.test(tid);
   const buttons = item.options
     .map(
       (o, i) =>
@@ -39,7 +44,8 @@ export function optionsMarkup(item, { selected = -1, labelPrefix = 'Option' } = 
         `<span class="opt-mark" aria-hidden="true"></span></button>`,
     )
     .join('');
-  return `<div class="opts" style="--cols:${cols};--cols-m:${Math.min(cols, 3)}" role="group" aria-label="Answer options">${buttons}</div>`;
+  const sameScale = /^E\d/.test(tid);
+  return `<div class="opts${large ? ' opts-lg' : ''}${sameScale ? ' opts-same' : ''}" style="--cols:${cols};--cols-m:${twoUp ? 2 : Math.min(cols, 3)}" role="group" aria-label="Answer options">${buttons}</div>`;
 }
 
 // Inline icons (currentColor).
