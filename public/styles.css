@@ -239,3 +239,12 @@ details.review > summary, details.rv > summary { cursor: pointer; font-weight: 6
 .f-grey { fill: var(--mid); }
 .f-solid { fill: currentColor; }
 svg { color: var(--ink); }
+
+/* Strength cards + range traits */
+.strengths { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.strength { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--bg); }
+.strength h3 { font-size: 1rem; margin: 0 0 6px; }
+.strength h3::before { content: "\2726  "; color: var(--accent); }
+.strength p { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+.traits { margin: 4px 0 14px; padding-left: 20px; }
+.traits li { margin: 4px 0; }

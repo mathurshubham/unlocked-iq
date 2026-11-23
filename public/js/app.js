@@ -1,7 +1,7 @@
 // UI driver: intro -> test -> results. Vanilla ES module, no dependencies.
 import { ITEMS, CATEGORIES, ITEMS_VERSION } from './items.js';
 import { score } from './scoring.js';
-import { categoryProfile, overallProfile } from './profile.js';
+import { categoryProfile, overallProfile, rangeTraits, strengths } from './profile.js';
 import { encodeShare, decodeShare } from './share.js';
 
 const TIME_LIMIT = 25 * 60; // seconds
@@ -379,9 +379,21 @@ function renderResults({ name, answers, seconds, readonly }) {
       <p>No &ldquo;Question #14 reveals something rare about you&rdquo; emails. No blurred charts, no &ldquo;unlock your full report&rdquo;. Everything we know is on this page.</p>
     </section>
 
+    <section class="card" aria-label="Your strengths">
+      <h2 class="h3" style="margin-bottom:12px">Your strengths</h2>
+      <div class="strengths">
+        ${strengths(ITEMS, answers, seconds, CATEGORIES)
+          .map((s) => `<div class="strength"><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></div>`)
+          .join('')}
+      </div>
+    </section>
+
     <section class="card profile" aria-label="Profile">
       <h2 class="h3">What the numbers say</h2>
       <p style="margin-top:8px">${esc(overallProfile(r.iq))}</p>
+      ${pct >= 50 ? `<p>Put another way: on puzzles like these, you would likely outscore about <b>${pct} of every 100 people</b>.</p>` : ''}
+      <h3>People in your range often enjoy</h3>
+      <ul class="traits">${rangeTraits(r.iq).map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
       ${catProfiles}
     </section>
 
