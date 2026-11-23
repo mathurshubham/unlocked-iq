@@ -4,7 +4,7 @@
 
 export const CARD_W = 1080;
 export const CARD_H = 1920;
-export const SITE = 'iq-test.shubhammathur.in';
+export const SITE = 'unlocked-iq.shubhammathur.in';
 
 const DISPLAY = '"Space Grotesk", "Inter", system-ui, sans-serif';
 const BODY = '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif';

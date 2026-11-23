@@ -5,4 +5,4 @@ Disallow: /og/
 Disallow: /results
 Disallow: /r/
 
-Sitemap: https://iq-test.shubhammathur.in/sitemap.xml
+Sitemap: https://unlocked-iq.shubhammathur.in/sitemap.xml

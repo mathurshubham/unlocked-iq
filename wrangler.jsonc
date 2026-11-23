@@ -7,9 +7,10 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/api/*", "/r/*", "/og/*"]
+    "run_worker_first": true
   },
   "routes": [
+    { "pattern": "unlocked-iq.shubhammathur.in", "custom_domain": true },
     { "pattern": "iq-test.shubhammathur.in", "custom_domain": true }
   ],
   "d1_databases": [

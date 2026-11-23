@@ -2,7 +2,7 @@
 
 Read `docs/SPEC.md` too: v1 contracts (item object, SVG rules, scoring, figure fill classes) still hold unless overridden here.
 
-Live at https://iq-test.shubhammathur.in (Cloudflare Workers + static assets). Stack stays **vanilla ES modules, no frontend build step, no frameworks** in `public/`. The Worker (`src/`) may use npm packages (wrangler bundles it). Do **not** commit; the integrator commits. Only edit files you own (table below). If you need a change in someone else's file, write it in your final report.
+Live at https://unlocked-iq.shubhammathur.in (Cloudflare Workers + static assets). Stack stays **vanilla ES modules, no frontend build step, no frameworks** in `public/`. The Worker (`src/`) may use npm packages (wrangler bundles it). Do **not** commit; the integrator commits. Only edit files you own (table below). If you need a change in someone else's file, write it in your final report.
 
 ## Brand
 
@@ -80,13 +80,13 @@ Items are rebuilt as `tids.map(id => buildItem(id, seed))`. v1 hash links (`#r=`
 
 Files: `src/worker.js` (Hono router), `src/og.js`, `src/headers.js`, `migrations/0001_init.sql`, `scripts/calibrate.mjs`, `wrangler.jsonc`, `package.json` (deps/scripts), `public/_headers`.
 
-Bindings (wrangler.jsonc): D1 `DB` → database_name `iq-test`, database_id `23555869-21e5-4c0e-a431-9321e714d0e2`, migrations_dir `migrations`. Analytics Engine dataset binding `EVENTS` (dataset `iq_test_events`). Keep the custom domain route `iq-test.shubhammathur.in`. `compatibility_date` 2025-06-01 (+ `nodejs_compat` flag only if a dep needs it).
+Bindings (wrangler.jsonc): D1 `DB` → database_name `iq-test`, database_id `23555869-21e5-4c0e-a431-9321e714d0e2`, migrations_dir `migrations`. Analytics Engine dataset binding `EVENTS` (dataset `iq_test_events`). Keep the custom domain route `unlocked-iq.shubhammathur.in`. `compatibility_date` 2025-06-01 (+ `nodejs_compat` flag only if a dep needs it).
 
 Endpoints:
 - `POST /api/results` body = result payload (validate shape, ≤8KB, answers length = tids length, indices in range by rebuilding items) → `{ id }` (8-char base62, collision-retry). Stores payload JSON + computed iq + created_at.
 - `GET /api/results/:id` → payload JSON or 404.
 - `GET /r/:id` → fetch `/results.html` from ASSETS, inject via HTMLRewriter: `<meta name="result-id" content=":id">`, `og:title` ("Richa scored 118 on Unlocked IQ" / "An Unlocked IQ result"), `og:description`, `og:image` (`/og/:id.png`), `twitter:card=summary_large_image`, canonical. 404 page if unknown.
-- `GET /og/:id.png?format=og|story` → PNG (1200×630 og, 1080×1920 story) using `workers-og` (satori + resvg wasm) or equivalent that runs on Workers. Card: brand mark, name, big IQ, percentile, 3 category bars, "iq-test.shubhammathur.in". Fonts: fetch Inter/Space Grotesk TTF and cache (Cache API). Cache PNG responses (`Cache-Control: public, max-age=86400`).
+- `GET /og/:id.png?format=og|story` → PNG (1200×630 og, 1080×1920 story) using `workers-og` (satori + resvg wasm) or equivalent that runs on Workers. Card: brand mark, name, big IQ, percentile, 3 category bars, "unlocked-iq.shubhammathur.in". Fonts: fetch Inter/Space Grotesk TTF and cache (Cache API). Cache PNG responses (`Cache-Control: public, max-age=86400`).
 - `POST /api/responses` (only sent when the user ticked consent) body `{ mode, seed, tids, a, secs, theta }` → inserts one row per item into `responses` (template_id, seed, correct, mode, theta, created_at). No name, no IP stored.
 - `GET /api/stats` → `{ takers }` (count of results + consented sessions; cache 5 min).
 - `POST /api/events` `{ name, props? }` → `EVENTS.writeDataPoint` (names: `test_start`, `test_finish`, `share_click`, `card_download`, `practice_answer`). No PII.
@@ -140,7 +140,7 @@ Landing (`/`): hero (headline, sub, primary CTA "Take the free test" → /test, 
 `/privacy`: what is stored (results only when you finish — payload incl. optional name; anonymous answers only with consent; aggregate event counts with no personal data; no cookies, no tracking, no ads), retention, contact via site owner.
 `/about`: the story (built because a paid test hid results behind a paywall and sent "Question #14…" emails), principles.
 
-SEO: unique titles/descriptions, canonical URLs on `https://iq-test.shubhammathur.in`.
+SEO: unique titles/descriptions, canonical URLs on `https://unlocked-iq.shubhammathur.in`.
 
 ## Verification (each agent)
 

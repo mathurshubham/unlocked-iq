@@ -2,7 +2,7 @@
 
 **The IQ test with nothing locked.** A free reasoning test that gives you the full result at the end: estimated IQ with a 90% range, percentile, strengths, category breakdown and an explanation for every question. No email, no paywall, no drip emails.
 
-Live at **https://iq-test.shubhammathur.in**
+Live at **https://unlocked-iq.shubhammathur.in**
 
 It started as a gift. A friend took a "free" online IQ test that hid the result behind a payment and then sent emails like *"Question #14 is among the hardest… your pattern is rare…"*. This is the version where you just get the answer.
 
@@ -90,4 +90,4 @@ Every question is produced by this project's own code from published rules and f
 
 ## Privacy
 
-Results are stored only when you finish, including the optional name you typed. Anonymous answers are stored only if you tick the consent box, and never include a name or IP. There are no cookies, ads or tracking pixels. See [`/privacy`](https://iq-test.shubhammathur.in/privacy).
+Results are stored only when you finish, including the optional name you typed. Anonymous answers are stored only if you tick the consent box, and never include a name or IP. There are no cookies, ads or tracking pixels. See [`/privacy`](https://unlocked-iq.shubhammathur.in/privacy).

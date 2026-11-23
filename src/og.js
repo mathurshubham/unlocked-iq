@@ -130,7 +130,7 @@ function cardTree(format, { name, s }) {
   const title = name ? `${name}'s result` : 'An Unlocked IQ result';
   const range = `90% range ${s.low}–${s.high}`;
   const pct = percentileLabel(s.percentile);
-  const url = 'iq-test.shubhammathur.in';
+  const url = 'unlocked-iq.shubhammathur.in';
   const bg = `linear-gradient(135deg, ${C.bg1} 0%, ${C.bg2} 100%)`;
 
   if (format === 'story') {

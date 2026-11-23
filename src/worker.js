@@ -18,9 +18,18 @@ import {
 } from './validate.js';
 
 // Canonical public origin for og:url / og:image / canonical links (never the request host).
-const SITE = 'https://iq-test.shubhammathur.in';
+const SITE = 'https://unlocked-iq.shubhammathur.in';
 
 const app = new Hono();
+
+// Old address: permanently redirect every path (incl. shared /r/:id links) to the new one.
+const OLD_HOSTS = new Set(['iq-test.shubhammathur.in']);
+app.use('*', async (c, next) => {
+  const url = new URL(c.req.url);
+  const host = (c.req.header('host') || url.hostname).split(':')[0];
+  if (OLD_HOSTS.has(url.hostname) || OLD_HOSTS.has(host)) return c.redirect(SITE + url.pathname + url.search, 301);
+  await next();
+});
 
 // ---------- helpers ----------
 const now = () => Math.floor(Date.now() / 1000);
@@ -271,7 +280,9 @@ app.get('/og/:file', async (c) => {
   return new Response(png, { headers });
 });
 
-app.notFound((c) => (c.req.path.startsWith('/api/') ? err(c, 404, 'not found') : notFoundPage(c)));
+// The Worker runs first for every request (so the old host can redirect); anything not handled
+// above is a static asset, served by the assets binding with its 404-page handling.
+app.notFound((c) => (c.req.path.startsWith('/api/') ? err(c, 404, 'not found') : c.env.ASSETS.fetch(c.req.raw)));
 
 app.onError((e, c) => {
   if (e instanceof TooLarge) return err(c, 413, 'body too large');

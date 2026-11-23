@@ -43,7 +43,7 @@ test('drawCard writes IQ, range, percentile, bars and the site', () => {
   assert.ok(all.some((t) => t.includes('108') && t.includes('128')));
   assert.ok(all.some((t) => t.includes('88%')));
   assert.ok(all.includes('75%') && all.includes('50%') && all.includes('0%'));
-  assert.ok(all.some((t) => t.includes('iq-test.shubhammathur.in')));
+  assert.ok(all.some((t) => t.includes('unlocked-iq.shubhammathur.in')));
   for (const [, x, y] of ctx.texts) assert.ok(x >= 0 && x <= CARD_W && y >= 0 && y <= CARD_H);
 });
 
