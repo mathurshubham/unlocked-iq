@@ -6,7 +6,7 @@ const FALLBACK_EXPLANATION =
 async function loadSampleItem() {
   try {
     const engine = await import('/js/engine.js');
-    if (typeof engine.buildItem === 'function') return engine.buildItem('M2', 0);
+    if (typeof engine.buildItem === 'function') return engine.buildItem('M2', 0, { format: 'v4' });
   } catch { /* engine not available: fall through to the v1 bank */ }
   const { ITEMS } = await import('/js/items.js');
   return ITEMS.find((i) => i.id === 'M2') || ITEMS[0];
@@ -38,20 +38,13 @@ async function initPuzzle() {
   }
 
   const explanation = item.explanation || FALLBACK_EXPLANATION;
-  promptEl.textContent = item.prompt;
+  const { optionsMarkup, promptMarkup, buzz } = await import('/js/ui.js');
+  promptEl.innerHTML = promptMarkup(item.prompt);
   stemEl.innerHTML = item.stem;
-  const cols = item.optionCols || 3;
-  optsEl.style.setProperty('--cols', String(cols));
-  optsEl.textContent = '';
-
-  const buttons = item.options.map((markup, i) => {
-    const b = el('button', 'opt', markup);
-    b.type = 'button';
-    b.setAttribute('aria-label', `Option ${i + 1}`);
-    b.dataset.i = String(i);
-    optsEl.appendChild(b);
-    return b;
-  });
+  // Four options become answer tiles (2x2); legacy 5-6 option items keep the old grid.
+  const tiles = item.options.length === 4;
+  optsEl.innerHTML = optionsMarkup(item);
+  const buttons = Array.from(optsEl.querySelectorAll('.opt'));
 
   let done = false;
   function reveal(picked) {
@@ -61,6 +54,7 @@ async function initPuzzle() {
       b.disabled = true;
       b.classList.toggle('is-correct', i === item.answer);
       b.classList.toggle('is-wrong', i === picked && !right);
+      if (tiles) return;
       if (i === item.answer) b.insertAdjacentHTML('beforeend', `<span class="opt-flag opt-flag--good" aria-hidden="true">${CHECK}</span>`);
       else if (i === picked) b.insertAdjacentHTML('beforeend', `<span class="opt-flag opt-flag--bad" aria-hidden="true">${CROSS}</span>`);
     });
@@ -98,6 +92,7 @@ async function initPuzzle() {
   optsEl.addEventListener('click', (e) => {
     const b = e.target.closest('.opt');
     if (!b || done) return;
+    buzz();
     reveal(Number(b.dataset.i));
   });
 }

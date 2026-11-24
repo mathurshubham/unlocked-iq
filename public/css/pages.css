@@ -82,7 +82,7 @@
 @media (min-width: 480px) { .puzzle { padding: var(--s5); } }
 .puzzle-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
 .puzzle-title { font-family: var(--font-display); font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; }
-.puzzle-prompt { margin-top: var(--s3); font-weight: 500; }
+.puzzle-prompt { margin-top: var(--s3); font: 700 1.2rem/1.35 var(--font-display); letter-spacing: -0.01em; }
 .puzzle-stem {
   margin-top: var(--s3);
   display: grid;
@@ -94,7 +94,10 @@
   min-height: 120px;
 }
 .puzzle-stem svg { width: 100%; max-width: 230px; height: auto; }
-.puzzle-options { --cols: 3; margin-top: var(--s3); display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: var(--s2); }
+.puzzle-options { margin-top: var(--s3); }
+/* legacy (5-6 option) fallback grid; four-option items use the answer tiles from base.css, always 2x2 here */
+.puzzle-options .opts { display: grid; grid-template-columns: repeat(var(--cols-m, 3), minmax(0, 1fr)); gap: var(--s2); }
+.puzzle-options .opts.opts-tiles { gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .opt {
   position: relative;
   display: grid;

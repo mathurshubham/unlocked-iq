@@ -29,6 +29,14 @@
   --warn: #B45309;
   --danger: #C62828;
 
+  /* Answer tiles: 1 red, 2 blue, 3 yellow, 4 green. Text on each is >= 4.5:1 (yellow uses dark ink). */
+  --tile-red: #C62A3A;
+  --tile-blue: #2557C8;
+  --tile-yellow: #F2B01E;
+  --tile-green: #1B7F3B;
+  --tile-ink: #FFFFFF;
+  --tile-yellow-ink: #1F1400;
+
   --radius: 14px;
   --radius-lg: 20px;
   --shadow-sm: 0 1px 2px rgba(20, 20, 43, 0.06), 0 1px 1px rgba(20, 20, 43, 0.04);
@@ -79,6 +87,13 @@
     --warn: #FBBF24;
     --danger: #F87171;
 
+    --tile-red: #C93C4B;
+    --tile-blue: #3A64D8;
+    --tile-yellow: #E9AA1C;
+    --tile-green: #1E7E43;
+    --tile-ink: #FFFFFF;
+    --tile-yellow-ink: #1F1400;
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7), 0 3px 10px rgba(0, 0, 0, 0.35);
   }
@@ -106,6 +121,13 @@
   --good: #4ADE80;
   --warn: #FBBF24;
   --danger: #F87171;
+
+  --tile-red: #C93C4B;
+  --tile-blue: #3A64D8;
+  --tile-yellow: #E9AA1C;
+  --tile-green: #1E7E43;
+  --tile-ink: #FFFFFF;
+  --tile-yellow-ink: #1F1400;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.7), 0 3px 10px rgba(0, 0, 0, 0.35);
@@ -438,3 +460,182 @@ a:hover { color: var(--accent-strong); text-decoration-thickness: 2px; }
 @media (min-width: 760px) {
   .footer-grid { grid-template-columns: 1.3fr 1fr auto; align-items: start; }
 }
+
+/* ---------- Question prompt: headline + muted detail (see promptMarkup in ui.js) ---------- */
+.q-sub {
+  display: block;
+  margin-top: 6px;
+  font: 500 0.875rem/1.45 var(--font-body);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* ---------- Answer tiles (four-option items): 1 red triangle, 2 blue diamond, 3 yellow circle, 4 green square ----------
+   Selectors are prefixed .opts.opts-tiles so they win over the legacy .opt rules in app.css and pages.css. */
+.opts.opts-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: var(--s4);
+  padding-bottom: 4px; /* room for the tile's bottom edge */
+}
+@media (min-width: 900px) {
+  .opts.opts-tiles.opts-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.opts.opts-tiles .tile-1 { --t: var(--tile-red); --ti: var(--tile-ink); }
+.opts.opts-tiles .tile-2 { --t: var(--tile-blue); --ti: var(--tile-ink); }
+.opts.opts-tiles .tile-3 { --t: var(--tile-yellow); --ti: var(--tile-yellow-ink); }
+.opts.opts-tiles .tile-4 { --t: var(--tile-green); --ti: var(--tile-ink); }
+
+.opts.opts-tiles .opt {
+  --edge: color-mix(in srgb, var(--t) 58%, #000);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: auto;
+  min-width: 0;
+  min-height: 96px;
+  padding: 34px 10px 14px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--t);
+  color: var(--ti);
+  box-shadow: 0 4px 0 var(--edge);
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), filter 0.15s var(--ease), opacity 0.15s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.opts.opts-tiles .opt:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; border-radius: 18px; }
+.opts.opts-tiles .opt[aria-pressed="true"]:focus-visible { outline-offset: 10px; }
+
+/* shape badge (decorative: the aria-label names colour and shape) */
+.opts.opts-tiles .opt-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ti) 20%, transparent);
+  color: var(--ti);
+  pointer-events: none;
+}
+.opts.opts-tiles .opt-badge svg { display: block; flex: none; width: 14px; height: 14px; max-width: none; }
+.opts.opts-tiles .opt .opt-badge .opt-n { position: static; font: 700 0.75rem/1 var(--font-display); color: inherit; }
+@media (hover: none) { .opts.opts-tiles .opt .opt-badge .opt-n { display: none; } }
+
+/* text / number options: the whole tile is the colour, the value is big, bold and centred */
+.opts.opts-tiles .opt-text .opt-fig {
+  width: 100%;
+  background: none;
+  padding: 0;
+  color: var(--ti);
+  text-align: center;
+  font: 700 clamp(1.6rem, 1.2rem + 1.6vw, 2rem)/1.15 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* figure options: the tile is a coloured frame around a white (surface) panel in the normal text colour */
+.opts.opts-tiles .opt:not(.opt-text) { min-height: 0; padding: 8px; }
+.opts.opts-tiles .opt:not(.opt-text) .opt-fig {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 6px 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.opts.opts-tiles .opt:not(.opt-text) .opt-badge { top: -5px; left: -5px; background: var(--t); box-shadow: 0 0 0 3px var(--surface); }
+.opts.opts-tiles .opt:not(.opt-text) .opt-badge svg { color: var(--ti); }
+.opts.opts-tiles .opt:not(.opt-text) .opt-badge .opt-n { color: var(--ti); }
+.opts.opts-tiles .opt-fig svg { display: block; width: 100%; max-width: 88px; max-height: 88px; height: auto; margin: 0 auto; color: var(--ink); }
+.opts.opts-tiles.opts-lg .opt-fig svg { max-width: 108px; max-height: 104px; }
+@media (max-height: 900px) and (max-width: 600px) { .opts.opts-tiles.opts-lg .opt-fig svg { max-width: 92px; max-height: 88px; } }
+.opts.opts-tiles.opts-same .opt-fig svg { width: 88px; max-width: 88px; }
+@media (min-width: 561px) {
+  .opts.opts-tiles .opt-fig svg { max-width: 150px; max-height: 130px; }
+  .opts.opts-tiles.opts-lg .opt-fig svg { max-width: 180px; max-height: 150px; }
+  .opts.opts-tiles.opts-same .opt-fig svg { width: 116px; max-width: 116px; }
+}
+@media (min-width: 900px) {
+  .opts.opts-tiles.opts-4 .opt-fig svg { max-width: 120px; max-height: 112px; }
+}
+
+/* selected: thick ink ring, a check mark and a slight lift. Not colour-only. */
+.opts.opts-tiles .opt[aria-pressed="true"] {
+  box-shadow: 0 4px 0 var(--edge), 0 0 0 3px var(--surface), 0 0 0 7px var(--ink);
+  z-index: 1;
+}
+/* neutralise the legacy hover look (border colour, big shadow) on tiles */
+.opts.opts-tiles .opt:not(:disabled):hover { transform: none; border-color: transparent; box-shadow: 0 4px 0 var(--edge); }
+.opts.opts-tiles .opt[aria-pressed="true"]:not(:disabled):hover { box-shadow: 0 4px 0 var(--edge), 0 0 0 3px var(--surface), 0 0 0 7px var(--ink); }
+/* a pick dims the other tiles a little (filter, so text contrast stays up) */
+.opts.opts-tiles:has(.opt[aria-pressed="true"]) .opt:not([aria-pressed="true"]):not(.is-correct):not(.is-wrong) {
+  filter: saturate(0.6);
+}
+
+/* corner mark: check (selected / correct) or cross (wrong) */
+.opts.opts-tiles .opt-mark {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: 0 0 0 3px var(--surface);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.15s ease-out, transform 0.2s cubic-bezier(.3,1.6,.5,1);
+}
+.opts.opts-tiles .opt .opt-mark::after { content: none; }
+.opts.opts-tiles .opt-mark svg { display: block; width: 18px; height: 18px; }
+.opts.opts-tiles .opt-mark .mk-x { display: none; }
+.opts.opts-tiles .opt[aria-pressed="true"] .opt-mark,
+.opts.opts-tiles .opt.is-correct .opt-mark,
+.opts.opts-tiles .opt.is-wrong .opt-mark { opacity: 1; transform: scale(1); }
+
+/* feedback states (practice, warm-up, landing sample) */
+.opts.opts-tiles .opt.is-correct {
+  background: var(--t);
+  filter: none;
+  opacity: 1;
+  box-shadow: 0 4px 0 var(--edge), 0 0 0 3px var(--surface), 0 0 0 7px var(--good);
+  z-index: 1;
+}
+.opts.opts-tiles .opt.is-correct .opt-mark { background: var(--good); color: var(--surface); }
+.opts.opts-tiles .opt.is-wrong {
+  background: var(--t);
+  filter: saturate(0.45);
+  opacity: 1;
+  box-shadow: 0 4px 0 var(--edge), 0 0 0 3px var(--surface), 0 0 0 6px var(--ink);
+  z-index: 1;
+}
+.opts.opts-tiles .opt.is-wrong .opt-mark { background: var(--danger); color: var(--surface); }
+.opts.opts-tiles .opt.is-wrong .opt-mark .mk-ok { display: none; }
+.opts.opts-tiles .opt.is-wrong .opt-mark .mk-x { display: block; }
+.opts.opts-tiles .opt:disabled { cursor: default; }
+.opts.opts-tiles .opt:disabled:not(.is-correct):not(.is-wrong) { opacity: 0.5; filter: saturate(0.5); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .opts.opts-tiles .opt[aria-pressed="true"], .opts.opts-tiles .opt.is-correct { transform: scale(1.03); }
+  .opts.opts-tiles .opt.is-correct, .opts.opts-tiles .opt.is-wrong { animation: tile-pop 0.38s cubic-bezier(.3,1.5,.5,1); }
+  .opts.opts-tiles .opt:not(:disabled):not(.is-wrong):not(.is-correct):active { transform: scale(0.97); }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .opts.opts-tiles .opt:not(:disabled):not([aria-pressed="true"]):hover { transform: translateY(-2px); }
+  .opts.opts-tiles .opt[aria-pressed="true"]:not(:disabled):hover { transform: scale(1.03); }
+}
+@keyframes tile-pop { 0% { transform: scale(0.95); } 60% { transform: scale(1.06); } 100% { transform: scale(1.03); } }
+.opts.opts-tiles .opt.is-wrong { animation-name: tile-shake; }
+@keyframes tile-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }

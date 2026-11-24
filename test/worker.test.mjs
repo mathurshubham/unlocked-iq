@@ -153,3 +153,15 @@ test('calibration: recovers b and respects the minimum count', () => {
   assert.ok(report.find((r) => r.tid === 'T2').skipped);
   assert.match(render(calibration), /^\/\/ Generated[\s\S]*export const CALIBRATION = \{/);
 });
+
+test('calibrate: rows carry their own guessing floor from n_options', () => {
+  // Same data seen as 4-option (c = 0.25) vs 6-option (c = 1/6): a higher floor explains more
+  // lucky guesses, so the same success rate implies a harder item.
+  const bins = [{ template_id: 'T9', t: 0, correct: 1, n: 60 }, { template_id: 'T9', t: 0, correct: 0, n: 40 }];
+  const tpl = { T9: { b0: 0, a: 1.3, c: 0.2 } };
+  const four = calibrate(bins.map((r) => ({ ...r, n_options: 4 })), { min: 50, templates: tpl }).calibration.T9.b;
+  const six = calibrate(bins.map((r) => ({ ...r, n_options: 6 })), { min: 50, templates: tpl }).calibration.T9.b;
+  const legacy = calibrate(bins, { min: 50, templates: tpl }).calibration.T9.b;
+  assert.ok(four > six, `${four} > ${six}`);
+  assert.ok(legacy > six && legacy < four);
+});

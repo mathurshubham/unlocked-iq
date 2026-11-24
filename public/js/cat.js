@@ -3,7 +3,8 @@
 // Picks, at each step, the unused template with the largest 3PL Fisher
 // information at the current EAP ability estimate, subject to category balance
 // (each category stays within +-1 of its target share of the items given so far).
-import { TEMPLATES, buildItem } from './engine.js';
+import { TEMPLATES, buildItem, formatFromField, fieldFromFormat, V4_OPTIONS } from './engine.js';
+import { isV4 } from './present.js';
 import { score, fisherInfo } from './scoring.js';
 import { rng } from './rng.js';
 
@@ -20,7 +21,10 @@ const clampLength = (n) => Math.max(1, Math.min(MAX_LENGTH, Math.floor(n)));
 // opts.avoid: template ids to skip when possible (seen before).
 // opts.randomesque: pick at random (seeded by opts.seed) among the top-N most informative
 // templates, so repeat takers see different questions. 1 = pure max information.
-export function chooseNext(tids, answered, answers, { avoid = null, randomesque = 1, seed = 0 } = {}) {
+// opts.format: 'v4' means every item has exactly 4 options (guessing floor 1/4), whatever the
+// template's legacy option count; the shared TEMPLATES objects are not touched.
+export function chooseNext(tids, answered, answers, { avoid = null, randomesque = 1, seed = 0, format } = {}) {
+  const nOpt = (t) => (isV4(format) ? V4_OPTIONS : t.nOptions);
   const used = new Set(tids);
   const theta = answered.length ? score(answered, answers).theta : 0;
   const counts = Object.fromEntries(CATS.map((c) => [c, 0]));
@@ -48,7 +52,7 @@ export function chooseNext(tids, answered, answers, { avoid = null, randomesque 
     if (fresh.length) cands = fresh;
   }
   const ranked = cands
-    .map((t) => ({ t, info: fisherInfo(theta, t.b, t.nOptions, t.a) }))
+    .map((t) => ({ t, info: fisherInfo(theta, t.b, nOpt(t), t.a) }))
     .sort((x, y) => y.info - x.info || x.t.id.localeCompare(y.t.id));
   if (!ranked.length) return null;
   const n = Math.max(1, Math.min(ranked.length, Math.floor(randomesque)));
@@ -57,13 +61,14 @@ export function chooseNext(tids, answered, answers, { avoid = null, randomesque 
   return ranked[Math.floor(r() * n)].t.id;
 }
 
-function makeCat({ formSeed, length, tids, answers, avoid = null, randomesque = 1 }) {
-  const items = tids.map((id) => buildItem(id, formSeed));
+function makeCat({ formSeed, length, tids, answers, avoid = null, randomesque = 1, format }) {
+  const items = tids.map((id) => buildItem(id, formSeed, { format }));
   const state = { items, answers: answers.slice() };
 
   const cat = {
     formSeed,
     length,
+    format: isV4(format) ? 'v4' : 'legacy',
     get items() { return state.items; },
     get answers() { return state.answers; },
     get tids() { return state.items.map((i) => i.templateId); },
@@ -76,9 +81,9 @@ function makeCat({ formSeed, length, tids, answers, avoid = null, randomesque = 
       if (cat.done) return null;
       if (cat.pending) return cat.pending;
       const answered = state.items.slice(0, state.answers.length);
-      const id = chooseNext(state.items.map((i) => i.templateId), answered, state.answers, { avoid, randomesque, seed: formSeed });
+      const id = chooseNext(state.items.map((i) => i.templateId), answered, state.answers, { avoid, randomesque, seed: formSeed, format });
       if (!id) return null;
-      const item = buildItem(id, formSeed);
+      const item = buildItem(id, formSeed, { format });
       state.items.push(item);
       return item;
     },
@@ -96,18 +101,20 @@ function makeCat({ formSeed, length, tids, answers, avoid = null, randomesque = 
     toJSON() {
       const j = { v: 1, formSeed, length, tids: state.items.map((i) => i.templateId), answers: state.answers.slice() };
       if (randomesque > 1) j.rq = randomesque;
+      if (isV4(format)) j.f = fieldFromFormat(format);
       return j;
     },
   };
   return cat;
 }
 
-export function createCat({ formSeed = 0, length = DEFAULT_LENGTH, avoid = null, randomesque = 1 } = {}) {
-  return makeCat({ formSeed: formSeed >>> 0, length: clampLength(length), tids: [], answers: [], avoid, randomesque });
+export function createCat({ formSeed = 0, length = DEFAULT_LENGTH, avoid = null, randomesque = 1, format } = {}) {
+  return makeCat({ formSeed: formSeed >>> 0, length: clampLength(length), tids: [], answers: [], avoid, randomesque, format });
 }
 
 // Restore from toJSON() output (object or JSON string). Throws on bad input.
-export function catFromJSON(json, { avoid = null } = {}) {
+// The format comes from the saved state's `f` field (absent = legacy); opts.format overrides it.
+export function catFromJSON(json, { avoid = null, format } = {}) {
   const j = typeof json === 'string' ? JSON.parse(json) : json;
   const ids = new Set(TEMPLATES.map((t) => t.id));
   const ok =
@@ -118,7 +125,8 @@ export function catFromJSON(json, { avoid = null } = {}) {
     j.tids.every((t) => ids.has(t)) && new Set(j.tids).size === j.tids.length;
   if (!ok) throw new Error('bad cat state');
   const rq = Number.isInteger(j.rq) && j.rq > 1 && j.rq <= 10 ? j.rq : 1;
-  const cat = makeCat({ formSeed: j.formSeed >>> 0, length: clampLength(j.length), tids: j.tids, answers: j.answers, avoid, randomesque: rq });
+  const fmt = format !== undefined ? format : formatFromField(j.f);
+  const cat = makeCat({ formSeed: j.formSeed >>> 0, length: clampLength(j.length), tids: j.tids, answers: j.answers, avoid, randomesque: rq, format: fmt });
   cat.items.forEach((it, i) => {
     if (i < j.answers.length && !(Number.isInteger(j.answers[i]) && j.answers[i] >= -1 && j.answers[i] < it.options.length)) {
       throw new Error('bad cat state');

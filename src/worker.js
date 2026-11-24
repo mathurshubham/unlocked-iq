@@ -142,9 +142,9 @@ app.post('/api/responses', async (c) => {
   const { rows } = validateResponses(await readJson(c));
   const t = now();
   const stmt = c.env.DB.prepare(
-    'INSERT INTO responses (template_id, seed, correct, mode, theta, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO responses (template_id, seed, correct, mode, theta, n_options, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
-  await c.env.DB.batch(rows.map((r) => stmt.bind(r.template_id, r.seed, r.correct, r.mode, r.theta, t)));
+  await c.env.DB.batch(rows.map((r) => stmt.bind(r.template_id, r.seed, r.correct, r.mode, r.theta, r.n_options, t)));
   return c.json({ ok: true, n: rows.length }, 201, jsonHeaders);
 });
 

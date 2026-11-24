@@ -1,5 +1,5 @@
 // /results and /r/:id: load a result (API id, #r= hash or local state), then render the full free analysis.
-import { buildItem, buildForm, CATEGORY_LABELS } from './engine.js';
+import { buildItem, buildForm, CATEGORY_LABELS, formatFromField } from './engine.js';
 import { score } from './scoring.js';
 import { ITEMS as V1_ITEMS } from './items.js';
 import { categoryProfile, overallProfile, rangeTraits, strengths } from './profile.js';
@@ -16,14 +16,15 @@ const ORDER = ['matrix', 'spatial', 'series'];
 
 // ---------------- helpers ----------------
 const itemCache = new Map();
-function itemFor(tid, seed) {
-  const key = `${tid}:${seed}`;
-  if (!itemCache.has(key)) itemCache.set(key, buildItem(tid, seed));
+// f: the payload's format field (4 = v4 presentation, absent = legacy items).
+function itemFor(tid, seed, f) {
+  const key = `${tid}:${seed}:${f === 4 ? 4 : 0}`;
+  if (!itemCache.has(key)) itemCache.set(key, buildItem(tid, seed, { format: formatFromField(f) }));
   return itemCache.get(key);
 }
-const optionCount = (tid, seed) => {
+const optionCount = (tid, seed, f) => {
   try {
-    return itemFor(tid, seed).options.length;
+    return itemFor(tid, seed, f).options.length;
   } catch {
     return NaN;
   }
@@ -87,7 +88,7 @@ async function main() {
 
   let items;
   try {
-    items = res.payload.tids.map((t) => itemFor(t, res.payload.seed));
+    items = res.payload.tids.map((t) => itemFor(t, res.payload.seed, res.payload.f));
     if (!res.payload.a.every((a, i) => a < items[i].options.length)) throw new Error('range');
   } catch {
     return showError({ error: 'invalid' });
@@ -203,10 +204,13 @@ function render({ payload, id, mine, items, local }) {
     .join('');
   const missed = items.filter((it, i) => payload.a[i] !== it.answer).length;
 
-  const burst = Array.from({ length: 16 }, (_, i) => {
-    const ang = (i / 16) * 360 + (i % 2 ? 8 : -6);
-    const dist = 90 + ((i * 37) % 60);
-    return `<i class="p p${i % 3}" style="--a:${ang}deg;--r:${dist}px;--dl:${(i % 4) * 30}ms"></i>`;
+  // One short confetti burst (CSS only, 28 pieces in the four tile colours). Skipped for reduced motion.
+  const burst = Array.from({ length: 28 }, (_, i) => {
+    const ang = ((i / 28) * 360 + (i % 2 ? 7 : -5)) * (Math.PI / 180);
+    const dist = 80 + ((i * 37) % 90);
+    const x = Math.round(Math.cos(ang) * dist * 1.3);
+    const y = Math.round(Math.sin(ang) * dist * 0.8 - 40);
+    return `<i class="p p${i % 4}" style="--x:${x}px;--y:${y}px;--fall:${110 + ((i * 53) % 70)}px;--rot:${(i % 2 ? 1 : -1) * (160 + ((i * 29) % 200))}deg;--dl:${(i % 5) * 35}ms"></i>`;
   }).join('');
 
   app.innerHTML = `

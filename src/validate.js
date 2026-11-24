@@ -1,6 +1,6 @@
 // Pure helpers: payload validation, item rebuilding, ids, name cleaning.
 // No Workers APIs here so node tests can import it.
-import { buildItem, TEMPLATES } from '../public/js/engine.js';
+import { buildItem, TEMPLATES, formatFromField } from '../public/js/engine.js';
 import { ITEMS } from '../public/js/items.js';
 import { score } from '../public/js/scoring.js';
 
@@ -61,6 +61,13 @@ function parseTids(mode, tids) {
   return tids.slice();
 }
 
+// f: presentation format. Absent = legacy items; 4 = v4 (4 options, see public/js/present.js).
+function parseFormat(v) {
+  if (v === undefined) return undefined;
+  if (v !== 4) bad('unsupported format');
+  return 4;
+}
+
 function parseAnswers(a, items) {
   if (!Array.isArray(a) || a.length !== items.length) bad('answers length must match items');
   return a.map((x, i) => {
@@ -72,7 +79,8 @@ function parseAnswers(a, items) {
 // Rebuild the exact items a payload refers to. v1 = fixed 30-item bank, v2 = tids + seed.
 export function rebuildItems(p) {
   if (p.v === 1) return ITEMS;
-  return p.tids.map((id) => buildItem(id, p.seed));
+  const format = formatFromField(p.f);
+  return p.tids.map((id) => buildItem(id, p.seed, { format }));
 }
 
 // Validate a result payload (POST /api/results and anything stored). Returns normalized payload + items.
@@ -90,10 +98,12 @@ export function validateResult(body) {
   if (body.mode !== 'standard' && body.mode !== 'quick') bad('mode must be standard or quick');
   const seed = parseSeed(body.seed);
   const tids = parseTids(body.mode, body.tids);
-  const items = tids.map((id) => buildItem(id, seed));
+  const f = parseFormat(body.f);
+  const items = tids.map((id) => buildItem(id, seed, { format: formatFromField(f) }));
   const a = parseAnswers(body.a, items);
   const payload = { v: 2, mode: body.mode, seed, tids, a, secs: parseSecs(body.secs) };
   if (n) payload.n = n;
+  if (f === 4) payload.f = 4;
   // u: questions answered after the clock ran out (untimed finish).
   if (body.u !== undefined) {
     if (!Number.isInteger(body.u) || body.u < 0 || body.u > tids.length) bad('u out of range');
@@ -102,20 +112,20 @@ export function validateResult(body) {
   return { payload, items, mode: body.mode };
 }
 
-// Validate a /api/responses body: { mode, seed, tids, a, secs, theta }. No name accepted or kept.
+// Validate a /api/responses body: { mode, seed, tids, a, secs, theta, f? }. No name accepted or kept.
 export function validateResponses(body) {
   if (!isObj(body)) bad('body must be a JSON object');
   if (body.mode !== 'standard' && body.mode !== 'quick') bad('mode must be standard or quick');
   const seed = parseSeed(body.seed);
   const tids = parseTids(body.mode, body.tids);
-  const items = tids.map((id) => buildItem(id, seed));
+  const items = tids.map((id) => buildItem(id, seed, { format: formatFromField(parseFormat(body.f)) }));
   const a = parseAnswers(body.a, items);
   let theta = null;
   if (body.theta !== undefined && body.theta !== null) {
     if (typeof body.theta !== 'number' || !Number.isFinite(body.theta) || Math.abs(body.theta) > 6) bad('theta out of range');
     theta = Math.round(body.theta * 1000) / 1000;
   }
-  const rows = tids.map((id, i) => ({ template_id: id, seed, correct: a[i] === items[i].answer ? 1 : 0, mode: body.mode, theta }));
+  const rows = tids.map((id, i) => ({ template_id: id, seed, correct: a[i] === items[i].answer ? 1 : 0, mode: body.mode, theta, n_options: items[i].options.length }));
   return { rows };
 }
 

@@ -24,11 +24,11 @@ import { dirname, join } from 'node:path';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public/js/calibration.js');
 const SQL =
-  'SELECT template_id, ROUND(theta, 1) AS t, correct, COUNT(*) AS n FROM responses ' +
-  'WHERE theta IS NOT NULL GROUP BY template_id, ROUND(theta, 1), correct';
+  'SELECT template_id, ROUND(theta, 1) AS t, correct, n_options, COUNT(*) AS n FROM responses ' +
+  'WHERE theta IS NOT NULL GROUP BY template_id, ROUND(theta, 1), correct, n_options';
 
-// rows: [{ t, correct (0|1), n }]; returns { b, n }.
-export function estimateB(rows, { b0, a = 1.3, c = 0.2, priorSd = 1 }) {
+// rows: [{ t, correct (0|1), n, c? }]; a row's own c (guessing floor) overrides the default. Returns { b, n }.
+export function estimateB(rows, { b0, a = 1.3, c: c0 = 0.2, priorSd = 1 }) {
   const N = rows.reduce((s, r) => s + r.n, 0);
   const prec = 1 / (priorSd * priorSd);
   let b = b0;
@@ -36,6 +36,7 @@ export function estimateB(rows, { b0, a = 1.3, c = 0.2, priorSd = 1 }) {
     let g = -(b - b0) * prec; // gradient of log prior
     let info = prec; // Fisher information (prior + data)
     for (const r of rows) {
+      const c = r.c ?? c0;
       const L = 1 / (1 + Math.exp(-a * (r.t - b)));
       const p = c + (1 - c) * L;
       const dp = -(1 - c) * a * L * (1 - L); // dp/db
@@ -54,7 +55,8 @@ export function calibrate(binned, { min = 50, templates = {}, existing = {} } = 
   const byTid = new Map();
   for (const r of binned) {
     if (!byTid.has(r.template_id)) byTid.set(r.template_id, []);
-    byTid.get(r.template_id).push({ t: Number(r.t), correct: Number(r.correct) ? 1 : 0, n: Number(r.n) });
+    const k = Number(r.n_options);
+    byTid.get(r.template_id).push({ t: Number(r.t), correct: Number(r.correct) ? 1 : 0, n: Number(r.n), ...(k >= 2 ? { c: 1 / k } : {}) });
   }
   const out = { ...existing };
   const report = [];

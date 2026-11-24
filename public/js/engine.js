@@ -12,6 +12,7 @@ import { matrixVariant } from './items-matrix.js';
 import { spatialVariant } from './items-spatial.js';
 import { seriesVariant } from './items-series.js';
 import { explain } from './explain.js';
+import { presentItem, isV4, formatFromField, fieldFromFormat, FORMAT_V4, FORMAT_LEGACY, V4_OPTIONS } from './present.js';
 // v3 item families. Each module exports TEMPLATES, variant(id, seed) and explain(id, meta).
 import * as figural from './items-figural.js';
 import * as spatial2 from './items-spatial2.js';
@@ -21,6 +22,10 @@ import * as extra from './items-extra.js';
 const FAMILY_MODULES = [figural, spatial2, numeric, extra];
 
 export const CATEGORY_LABELS = CATEGORIES;
+
+// Presentation formats: 'legacy' = the items exactly as the generators make them (old share links),
+// 'v4' = 4 options, clear prompts, fraction stems (new tests). See present.js.
+export { formatFromField, fieldFromFormat, FORMAT_V4, FORMAT_LEGACY, V4_OPTIONS };
 
 const byBThenId = (x, y) => x.b - y.b || x.id.localeCompare(y.id);
 
@@ -83,11 +88,27 @@ function variantOf(templateId, seed) {
 // Build one item. `formSeed` is the uint32 stored in the result payload.
 // Extra fields on top of the v1 item contract: a, templateId, seed (the form seed),
 // variantSeed (what the template actually used) and explanation.
-export function buildItem(templateId, formSeed = 0) {
+// opts.format: 'v4' = presentation layer (exactly 4 options, clear prompt, fraction stems for Q,
+// plus a `format: 'v4'` field); anything else = legacy, byte-identical to the original items.
+export function buildItem(templateId, formSeed = 0, { format } = {}) {
   const t = BY_ID[templateId];
   if (!t) throw new Error(`unknown template ${templateId}`);
   const variantSeed = itemSeed(formSeed, templateId);
   const { item, meta, explanation } = variantOf(templateId, variantSeed);
+  const text = explanation ?? explain(templateId, meta);
+  if (isV4(format)) {
+    const p = presentItem(templateId, variantSeed, { item, meta, explanation: text });
+    return {
+      ...p.item,
+      b: t.b,
+      a: t.a,
+      templateId,
+      seed: formSeed >>> 0,
+      variantSeed,
+      explanation: p.explanation,
+      format: FORMAT_V4,
+    };
+  }
   return {
     ...item,
     b: t.b,
@@ -95,7 +116,7 @@ export function buildItem(templateId, formSeed = 0) {
     templateId,
     seed: formSeed >>> 0,
     variantSeed,
-    explanation: explanation ?? explain(templateId, meta),
+    explanation: text,
   };
 }
 
@@ -136,19 +157,21 @@ export function pickForm(formSeed, { avoid = new Set(), templates = TEMPLATES } 
 
 // The 30-item standard form, ordered by difficulty. Form seed 0 equals v1 ITEMS.
 // opts.avoid: Set of template ids to steer away from (questions this browser has seen).
+// opts.format: presentation format passed to buildItem ('v4' for new tests).
 export function buildForm(formSeed = 0, opts = {}) {
-  if ((formSeed >>> 0) === 0) return LEGACY_TEMPLATES.map((t) => buildItem(t.id, 0));
+  const { format } = opts;
+  if ((formSeed >>> 0) === 0) return LEGACY_TEMPLATES.map((t) => buildItem(t.id, 0, { format }));
   return pickForm(formSeed, opts)
     .map((id) => BY_ID[id])
     .sort(byBThenId)
-    .map((t) => buildItem(t.id, formSeed));
+    .map((t) => buildItem(t.id, formSeed, { format }));
 }
 
 // Difficulty bands for practice (logit b): easy < -0.5 <= medium < 0.6 <= hard.
 const LEVELS = { easy: [-Infinity, -0.5], medium: [-0.5, 0.6], hard: [0.6, Infinity] };
 
 // One practice item. category: 'matrix' | 'spatial' | 'series' | undefined/'mixed'; level: easy|medium|hard.
-export function practiceItem(seed, { category, level = 'easy' } = {}) {
+export function practiceItem(seed, { category, level = 'easy', format } = {}) {
   const cat = category && category !== 'mixed' && category !== 'all' ? category : null;
   if (cat && !CATEGORY_LABELS[cat]) throw new Error(`unknown category ${category}`);
   const [lo, hi] = LEVELS[level] || LEVELS.easy;
@@ -161,5 +184,5 @@ export function practiceItem(seed, { category, level = 'easy' } = {}) {
   }
   const r = rng(`practice:${seed >>> 0}:${cat || 'mixed'}:${level}`);
   const t = cands[Math.floor(r() * cands.length)];
-  return buildItem(t.id, seed >>> 0);
+  return buildItem(t.id, seed >>> 0, { format });
 }

@@ -1,8 +1,8 @@
 // /practice: untimed, endless puzzles with instant feedback and explanations.
-import { practiceItem, CATEGORY_LABELS } from './engine.js';
+import { practiceItem, CATEGORY_LABELS, FORMAT_V4 } from './engine.js';
 import { loadPractice, savePractice, recordPractice, emptyPractice, accuracy, readKey, writeKey } from './state.js';
 import { track } from './api.js';
-import { $, $$, esc, optionsMarkup, ICON, announce, animateIn, isTyping, randomSeed, reducedMotion } from './ui.js';
+import { $, $$, esc, optionsMarkup, promptMarkup, tileName, buzz, ICON, announce, animateIn, isTyping, randomSeed, reducedMotion } from './ui.js';
 
 const app = $('#main');
 const PREFS_KEY = 'unlocked:practice-prefs';
@@ -24,6 +24,8 @@ let stats = loadPractice();
 let item = null;
 let itemCat = 'matrix';
 let answered = false;
+// Kahoot-style run of correct answers. Memory only: resets on a wrong answer and on reload.
+let runStreak = 0;
 
 function loadPrefs() {
   try {
@@ -40,7 +42,7 @@ const savePrefs = () => writeKey(PREFS_KEY, JSON.stringify(prefs));
 
 function pickItem() {
   itemCat = prefs.category === 'mixed' ? REAL_CATS[Math.floor(Math.random() * REAL_CATS.length)] : prefs.category;
-  item = practiceItem(randomSeed(), { category: itemCat, level: prefs.level });
+  item = practiceItem(randomSeed(), { category: itemCat, level: prefs.level, format: FORMAT_V4 });
   answered = false;
 }
 
@@ -69,7 +71,7 @@ function shell() {
       </article>
       <div class="t-actions t-actions-static" id="pr-actions"></div>
 
-      <p class="small muted pr-foot">Keys 1&ndash;6 pick an answer, Enter or N for the next puzzle. Ready for the real thing? <a href="/test">Take the full test</a>.</p>
+      <p class="small muted pr-foot">Keys 1&ndash;4 pick an answer, Enter or N for the next puzzle. Ready for the real thing? <a href="/test">Take the full test</a>.</p>
     </section>`;
   $('#pr-cats').addEventListener('click', (e) => {
     const b = e.target.closest('[data-v]');
@@ -87,7 +89,10 @@ function shell() {
   });
   $('#pr-opts').addEventListener('click', (e) => {
     const b = e.target.closest('.opt');
-    if (b && !b.disabled) answer(Number(b.dataset.i));
+    if (b && !b.disabled) {
+      buzz();
+      answer(Number(b.dataset.i));
+    }
   });
   $('#pr-actions').addEventListener('click', (e) => {
     if (e.target.closest('#pr-next')) nextPuzzle();
@@ -96,6 +101,7 @@ function shell() {
   $('#pr-stats').addEventListener('click', (e) => {
     if (e.target.closest('#pr-reset')) {
       stats = emptyPractice();
+      runStreak = 0;
       savePractice(stats);
       renderStats();
       announce('Practice stats reset');
@@ -126,7 +132,7 @@ function renderStats() {
 }
 
 function renderItem(dir = 0) {
-  $('#pr-prompt').textContent = item.prompt;
+  $('#pr-prompt').innerHTML = promptMarkup(item.prompt);
   $('#pr-chip').textContent = CATEGORY_LABELS[itemCat] || '';
   const stem = $('#pr-stem');
   stem.innerHTML = item.stem || '';
@@ -155,14 +161,26 @@ function answer(pick) {
     o.classList.toggle('is-correct', i === item.answer);
     o.classList.toggle('is-wrong', i === pick && !ok);
     o.setAttribute('aria-pressed', String(i === pick));
+    const label = o.getAttribute('aria-label');
+    if (label && i === item.answer) o.setAttribute('aria-label', `${label}, correct answer`);
+    else if (label && i === pick) o.setAttribute('aria-label', `${label}, your answer, not correct`);
   });
-  const streakNote =
-    ok && stats.streak > 1 && stats.streak % 5 === 0 ? `<span class="fb-streak">${stats.streak} in a row!</span>` : '';
+  const was = runStreak;
+  runStreak = ok ? runStreak + 1 : 0;
+  const streakHtml = ok
+    ? `<p class="fb-streak${runStreak >= 3 ? ' hot' : ''}"><span class="fb-flame" aria-hidden="true">${ICON.flame}</span>${runStreak} in a row</p>`
+    : was > 0
+      ? `<p class="fb-streak is-reset">Streak ended at ${was}. A new one starts with the next puzzle.</p>`
+      : '';
+  const tiles = item.options.length === 4;
+  const answerWas = tiles ? `option ${item.answer + 1}, the ${tileName(item.answer)}` : `option ${item.answer + 1}`;
   $('#pr-fb').innerHTML = `
     <div class="fb-box ${ok ? 'good' : 'bad'}">
       <p class="fb-title"><span class="fb-ic" aria-hidden="true">${ok ? ICON.check : ICON.close}</span>
-        <strong>${ok ? 'Correct' : `Not quite. The answer was option ${item.answer + 1}`}</strong>${streakNote}</p>
+        <strong>${ok ? 'Correct!' : 'Not quite'}</strong></p>
+      ${ok ? '' : `<p class="fb-ans">The answer was ${answerWas}.</p>`}
       <p class="fb-text">${esc(item.explanation || '')}</p>
+      ${streakHtml}
     </div>`;
   $('#pr-actions').innerHTML = `<button type="button" class="btn btn-primary btn-lg" id="pr-next">Next puzzle ${ICON.arrowR}</button>`;
   $('#pr-next').focus({ preventScroll: true });

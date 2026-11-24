@@ -1,6 +1,7 @@
 // Share-link encode/decode. Pure: no DOM access, no imports.
 //
-// v2 token = base64url(JSON { v:2, mode, seed, tids, a, secs, n? }) (the result payload from SPEC-v2).
+// v2 token = base64url(JSON { v:2, mode, seed, tids, a, secs, n?, u?, f? }) (the result payload from SPEC-v2).
+// f: 4 = items were shown in the v4 presentation format (4 options, clear prompts). Absent = legacy items.
 // v1 token = base64url(JSON { v:1, n, a, t }): standard mode, seed 0, tids = buildForm(0) ids.
 //
 // decodeShare always returns a v2-shaped payload (or null), so callers handle one shape.
@@ -9,6 +10,8 @@ export const MAX_NAME = 40;
 export const MAX_TIDS = 60;
 const MAX_TOKEN_LEN = 8000;
 const MAX_SECONDS = 24 * 60 * 60;
+// The only presentation-format field value so far (see present.js).
+export const FORMAT_FIELD = 4;
 const TID_RE = /^[A-Za-z0-9_-]{1,24}$/;
 
 function toBase64Url(str) {
@@ -33,11 +36,12 @@ export function cleanName(name) {
 const clampSecs = (s) => Math.min(MAX_SECONDS, Math.max(0, Math.round(Number(s) || 0)));
 
 // payload { mode, seed, tids, a, secs, n? } -> token string
-export function encodeShare({ mode = 'standard', seed = 0, tids, a, secs = 0, n = '', u = 0 }) {
+export function encodeShare({ mode = 'standard', seed = 0, tids, a, secs = 0, n = '', u = 0, f = 0 }) {
   const obj = { v: 2, mode, seed: seed >>> 0, tids, a, secs: clampSecs(secs) };
   const name = cleanName(n);
   if (name) obj.n = name;
   if (Number.isInteger(u) && u > 0) obj.u = u;
+  if (f === FORMAT_FIELD) obj.f = f;
   return toBase64Url(JSON.stringify(obj));
 }
 
@@ -49,8 +53,9 @@ export function extractToken(hash) {
 }
 
 // Validates and normalises an already-parsed v2 payload (also used for API responses).
-// opts.optionCount(tid, seed) -> number of options (optional; enables index range checks and
-// rejects unknown template ids by returning a non-finite value / throwing).
+// opts.optionCount(tid, seed, f) -> number of options (optional; enables index range checks and
+// rejects unknown template ids by returning a non-finite value / throwing). f is the payload's
+// format field (4 or undefined).
 export function validatePayload(obj, { optionCount } = {}) {
   try {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj) || obj.v !== 2) return null;
@@ -60,11 +65,12 @@ export function validatePayload(obj, { optionCount } = {}) {
     if (!obj.tids.every((t) => typeof t === 'string' && TID_RE.test(t))) return null;
     if (new Set(obj.tids).size !== obj.tids.length) return null;
     if (!Array.isArray(obj.a) || obj.a.length !== obj.tids.length) return null;
+    if (obj.f !== undefined && obj.f !== FORMAT_FIELD) return null;
     for (let i = 0; i < obj.a.length; i++) {
       const v = obj.a[i];
       if (!Number.isInteger(v) || v < -1) return null;
       if (optionCount) {
-        const max = optionCount(obj.tids[i], obj.seed);
+        const max = optionCount(obj.tids[i], obj.seed, obj.f);
         if (!Number.isFinite(max) || v >= max) return null;
       }
     }
@@ -82,6 +88,7 @@ export function validatePayload(obj, { optionCount } = {}) {
       if (!Number.isInteger(obj.u) || obj.u < 0 || obj.u > obj.tids.length) return null;
       if (obj.u > 0) out.u = obj.u;
     }
+    if (obj.f === FORMAT_FIELD) out.f = FORMAT_FIELD;
     return out;
   } catch {
     return null;

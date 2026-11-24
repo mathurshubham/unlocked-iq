@@ -1,6 +1,6 @@
 // /test: mode select -> warm-up carousel -> focus-mode runner -> review -> finish.
 // Vanilla ES module. Engine access only through engine.js, cat.js and scoring.js.
-import { buildItem, buildForm, practiceItem, CATEGORY_LABELS } from './engine.js';
+import { buildItem, buildForm, practiceItem, CATEGORY_LABELS, formatFromField, FORMAT_V4 } from './engine.js';
 import { createCat, catFromJSON } from './cat.js';
 import { score } from './scoring.js';
 import { encodeShare } from './share.js';
@@ -12,7 +12,7 @@ import {
 import { postResult, postResponses, track } from './api.js';
 import { ringMarkup, ringOffset } from './charts.js';
 import {
-  $, $$, esc, fmtClock, optionsMarkup, ICON, announce, animateIn, reducedMotion, isTyping, trapTab,
+  $, $$, esc, fmtClock, optionsMarkup, promptMarkup, buzz, ICON, announce, animateIn, reducedMotion, isTyping, trapTab,
 } from './ui.js';
 
 const app = $('#main');
@@ -40,8 +40,11 @@ const total = () => (S.mode === 'quick' ? QUICK_LENGTH : S.tids.length);
 const answeredCount = () => S.answers.filter((a) => a >= 0).length;
 const save = () => S && saveState(S);
 
+// New tests use the v4 presentation (4 options). A saved test without `f` resumes in legacy format.
+const fmtOf = (s) => formatFromField(s.f);
+
 function rebuildItems() {
-  items = S.tids.map((t) => buildItem(t, S.seed));
+  items = S.tids.map((t) => buildItem(t, S.seed, { format: fmtOf(S) }));
 }
 
 // ---------------- boot ----------------
@@ -84,7 +87,7 @@ function savedForResume() {
   try {
     if (s.mode === 'standard') {
       s.tids.forEach((t, i) => {
-        const it = buildItem(t, s.seed);
+        const it = buildItem(t, s.seed, { format: fmtOf(s) });
         if (s.answers[i] >= it.options.length) throw new Error('bad answer');
       });
     } else if (!s.cat) {
@@ -212,7 +215,7 @@ const WARM = [
 function showWarm(cfg) {
   setView('warm');
   const base = newSeed();
-  const puzzles = WARM.map((w, i) => ({ ...w, item: practiceItem((base + i * 7919) >>> 0, { category: w.category, level: 'easy' }) }));
+  const puzzles = WARM.map((w, i) => ({ ...w, item: practiceItem((base + i * 7919) >>> 0, { category: w.category, level: 'easy', format: FORMAT_V4 }) }));
   let step = 0;
   let answered = false;
 
@@ -235,7 +238,7 @@ function showWarm(cfg) {
         <h1 class="h2" id="warm-h" tabindex="-1">${esc(LABELS[category])}</h1>
         <p class="muted">${esc(blurb)}</p>
         <article class="q-card" id="warm-card">
-          <h2 class="q-prompt">${esc(item.prompt)}</h2>
+          <h2 class="q-prompt">${promptMarkup(item.prompt)}</h2>
           ${item.stem ? `<div class="q-stem">${item.stem}</div>` : ''}
           ${optionsMarkup(item)}
           <div class="fb" id="warm-fb" role="status" aria-live="polite"></div>
@@ -254,6 +257,7 @@ function showWarm(cfg) {
     $('#warm-card .opts').addEventListener('click', (e) => {
       const b = e.target.closest('.opt');
       if (!b || answered) return;
+      buzz();
       answered = true;
       const pick = Number(b.dataset.i);
       const ok = pick === item.answer;
@@ -274,14 +278,14 @@ function showWarm(cfg) {
 function startTest(cfg) {
   const seed = newSeed();
   if (cfg.mode === 'quick') {
-    cat = createCat({ formSeed: seed, length: QUICK_LENGTH, avoid: new Set(readSeenTids()), randomesque: 3 });
+    cat = createCat({ formSeed: seed, length: QUICK_LENGTH, avoid: new Set(readSeenTids()), randomesque: 3, format: FORMAT_V4 });
     const first = cat.next();
-    S = newState({ ...cfg, seed, tids: [first.id] });
+    S = newState({ ...cfg, seed, tids: [first.id], format: FORMAT_V4 });
     items = [first];
     S.cat = cat.toJSON();
   } else {
-    const form = buildForm(seed, { avoid: new Set(readSeenTids()) });
-    S = newState({ ...cfg, seed, tids: form.map((it) => it.id) });
+    const form = buildForm(seed, { avoid: new Set(readSeenTids()), format: FORMAT_V4 });
+    S = newState({ ...cfg, seed, tids: form.map((it) => it.id), format: FORMAT_V4 });
     items = form;
   }
   warned.clear();
@@ -295,7 +299,7 @@ function resumeTest(resume) {
   S = resume.s;
   try {
     if (S.mode === 'quick') {
-      cat = catFromJSON(S.cat, { avoid: new Set(readSeenTids()) });
+      cat = catFromJSON(S.cat, { avoid: new Set(readSeenTids()), format: fmtOf(S) });
       // next() is idempotent: it returns the pending question, or picks one if none is pending.
       if (!cat.done) cat.next();
       const pendingPick = S.answers[cat.answers.length] ?? -1;
@@ -526,7 +530,7 @@ function showQuestion(i, dir = 1, first = false) {
   const it = items[S.current];
   const q = S.mode === 'quick';
 
-  $('#q-prompt').textContent = it.prompt;
+  $('#q-prompt').innerHTML = promptMarkup(it.prompt);
   const stem = $('#q-stem');
   stem.innerHTML = it.stem || '';
   stem.hidden = !it.stem;
@@ -589,7 +593,10 @@ function onBodyClick(e) {
   if (!S || S.done || finishing) return;
   const t = e.target;
   const opt = t.closest('.opt');
-  if (opt && !opt.disabled) return select(Number(opt.dataset.i));
+  if (opt && !opt.disabled) {
+    buzz();
+    return select(Number(opt.dataset.i));
+  }
   const pal = t.closest('.pal');
   if (pal) return showQuestion(Number(pal.dataset.i), Number(pal.dataset.i) > S.current ? 1 : -1);
   if (t.closest('#flag-btn')) return toggleFlag();
@@ -829,7 +836,7 @@ async function finish(auto) {
     save();
   }
   if (S.consent) {
-    postResponses({ mode: payload.mode, seed: payload.seed, tids: payload.tids, a: payload.a, secs: payload.secs, theta });
+    postResponses({ mode: payload.mode, seed: payload.seed, tids: payload.tids, a: payload.a, secs: payload.secs, theta, ...(payload.f ? { f: payload.f } : {}) });
   }
   if (id) {
     location.assign(`/r/${id}`);

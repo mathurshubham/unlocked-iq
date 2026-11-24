@@ -2,6 +2,7 @@
 // Pure apart from the optional `storage` argument (defaults to localStorage, always wrapped in try/catch).
 
 import { cleanName } from './share.js';
+import { formatFromField } from './present.js';
 
 export const STATE_KEY = 'unlocked:state';
 export const PRACTICE_KEY = 'unlocked:practice';
@@ -69,9 +70,12 @@ export function newSeed() {
   }
 }
 
-export function newState({ mode, seed, name = '', consent = false, tids = [], now = Date.now() }) {
+// format: 'v4' for new tests. It is stored as `f: 4`; a saved state without `f` resumes in legacy format.
+export function newState({ mode, seed, name = '', consent = false, tids = [], now = Date.now(), format }) {
   const m = mode === 'quick' ? 'quick' : 'standard';
+  const f = format === 'v4' || format === 4 ? { f: 4 } : {};
   return {
+    ...f,
     v: STATE_V,
     mode: m,
     seed: seed >>> 0,
@@ -110,6 +114,7 @@ export function normalizeState(s) {
     const flags = Array.isArray(s.flags) && s.flags.length === s.tids.length ? s.flags.map(Boolean) : s.tids.map(() => false);
     const limit = Number.isFinite(s.limit) && s.limit > 0 && s.limit <= 4 * 3600 ? s.limit : LIMITS[s.mode];
     return {
+      ...(s.f === 4 ? { f: 4 } : {}),
       v: STATE_V,
       mode: s.mode,
       seed: s.seed,
@@ -185,6 +190,7 @@ export function toPayload(state, now = Date.now()) {
     secs: Math.round(Math.min(state.limit, elapsedSecs(state, now))),
   };
   if (state.name) p.n = state.name;
+  if (state.f === 4) p.f = 4;
   if (state.overtime && state.timedAnswered != null) {
     const late = Math.max(0, answeredCount(state) - state.timedAnswered);
     if (late > 0) p.u = late;
@@ -198,6 +204,7 @@ export function isMine(state, payload, resultId = null) {
   if (resultId && state.resultId === resultId) return true;
   return (
     state.seed === payload.seed &&
+    (state.f === 4) === (payload.f === 4) &&
     state.mode === payload.mode &&
     state.tids.length === payload.tids.length &&
     state.tids.every((t, i) => t === payload.tids[i]) &&
@@ -207,7 +214,8 @@ export function isMine(state, payload, resultId = null) {
 
 // Rebuild Item objects from a payload with the engine's buildItem.
 export function itemsFromPayload(payload, buildItem) {
-  return payload.tids.map((tid) => buildItem(tid, payload.seed));
+  const format = formatFromField(payload.f);
+  return payload.tids.map((tid) => buildItem(tid, payload.seed, { format }));
 }
 
 // ---------- practice stats ----------
